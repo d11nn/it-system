@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/Alonza0314/it-system/controller/backend/model"
 	"github.com/Alonza0314/it-system/runner/constant"
@@ -78,9 +79,18 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 	s.TaskLog.Tracef("Task tests: %v", task.Tests)
 	s.TaskLog.Tracef("Task NF-PR list: %v", task.NFPrList)
 
-	repoDir := filepath.Join(s.workspacePath, constant.FREE5GC_REPO)
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		s.TaskLog.Warnf("Failed to load location for Asia/Taipei: %v", err)
+		loc = time.FixedZone("CST", 8*3600)
+	}
 
-	if err := s.prepareRepo(repoDir); err != nil {
+	currentTimeStamp := time.Now().In(loc).Format(time.RFC3339)
+	s.TaskLog.Infof("Starting task ID: %d at %s", task.Id, currentTimeStamp)
+
+	repoDir := filepath.Join(s.workspacePath, currentTimeStamp)
+
+	if err := s.prepareRepo(repoDir, currentTimeStamp); err != nil {
 		s.TaskLog.Errorf("Failed to prepare repository for task ID: %d, error: %v", task.Id, err)
 
 		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, task.Id, "", false, fmt.Sprintf("Failed to prepare repository: %v", err)))
@@ -117,10 +127,10 @@ func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string
 	return string(output), nil
 }
 
-func (s *taskServer) prepareRepo(repoDir string) error {
+func (s *taskServer) prepareRepo(repoDir, currentTimeStamp string) error {
 	prepareRepoCtx, prepareRepoCancel := context.WithTimeout(context.Background(), constant.CLONE_CMD_TIMEOUT)
 	defer prepareRepoCancel()
-	if err := s.cloneRepo(prepareRepoCtx, repoDir); err != nil {
+	if err := s.cloneRepo(prepareRepoCtx, repoDir, currentTimeStamp); err != nil {
 		if prepareRepoCtx.Err() != nil {
 			return fmt.Errorf("prepare repo timed out: %v", prepareRepoCtx.Err())
 		}
@@ -131,7 +141,7 @@ func (s *taskServer) prepareRepo(repoDir string) error {
 	return nil
 }
 
-func (s *taskServer) cloneRepo(ctx context.Context, repoDir string) error {
+func (s *taskServer) cloneRepo(ctx context.Context, repoDir, currentTimeStamp string) error {
 	if err := os.MkdirAll(s.workspacePath, 0o755); err != nil {
 		return err
 	}
@@ -145,6 +155,7 @@ func (s *taskServer) cloneRepo(ctx context.Context, repoDir string) error {
 		"--jobs",
 		strconv.Itoa(runtime.NumCPU()),
 		constant.FREE5GC_REPO_URL,
+		currentTimeStamp,
 	); err != nil {
 		return err
 	}
