@@ -14,7 +14,7 @@ backend:
   
   runnerCheckTimeInterval: 10s
 
-  maxHistoryLength: 20
+  maxHistoryLength: 10
 
   frontendFilePath: "build/frontend"
 

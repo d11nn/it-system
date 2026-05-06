@@ -303,5 +303,9 @@ func (s *taskServer) cleanup(repoDir string) (string, error) {
 		return "", fmt.Errorf("failed to cleanup: %v", err)
 	}
 
+	if err := os.RemoveAll(s.workspacePath); err != nil {
+		s.TaskLog.Warnf("Failed to remove workspace directory: %v", err)
+	}
+
 	return output, nil
 }
