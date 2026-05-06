@@ -90,8 +90,6 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 	currentTimeStamp := strings.ReplaceAll(time.Now().In(loc).Format(time.RFC3339), ":", "_")
 	s.TaskLog.Infof("Starting task ID: %d at %s", task.Id, currentTimeStamp)
 
-	currentTimeStamp = "test"
-
 	repoDir := filepath.Join(s.workspacePath, currentTimeStamp)
 
 	if err := s.prepareRepo(repoDir, currentTimeStamp); err != nil {
