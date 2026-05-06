@@ -130,9 +130,21 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 
 		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, task.Id, test, true, output))
 	}
-
-	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, task.Id, "", true, "All tests completed"))
 	s.TaskLog.Infof("All tests completed for task ID: %d", task.Id)
+
+	output, err := s.cleanup(repoDir)
+	if err != nil {
+		s.TaskLog.Errorf("Failed to cleanup after tests for task ID: %d, error: %v", task.Id, err)
+		s.TaskLog.Tracef("Output of cleanup for task ID: %d: %s", task.Id, output)
+
+		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, task.Id, "", false, output))
+		return
+	} else {
+		s.TaskLog.Infof("Cleanup completed successfully for task ID: %d", task.Id)
+		s.TaskLog.Tracef("Output of cleanup for task ID: %d: %s", task.Id, output)
+
+		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, task.Id, "", true, "All tests completed"))
+	}
 }
 
 func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string) (string, error) {
@@ -258,6 +270,25 @@ func (s *taskServer) runTest(testName, repoDir string) (string, error) {
 			return "", fmt.Errorf("run test timed out for test: %s, error: %v", testName, ctx.Err())
 		}
 		return "", fmt.Errorf("failed to run test: %s, error: %v", testName, err)
+	}
+
+	return output, nil
+}
+
+func (s *taskServer) cleanup(repoDir string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constant.CLEANUP_CMD_TIMEOUT)
+	defer cancel()
+
+	output, err := s.runCmd(
+		ctx,
+		repoDir,
+		"./force_kill.sh",
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			return "", fmt.Errorf("cleanup timed out, error: %v", ctx.Err())
+		}
+		return "", fmt.Errorf("failed to cleanup: %v", err)
 	}
 
 	return output, nil
