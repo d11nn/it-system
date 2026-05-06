@@ -113,6 +113,26 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 		return
 	}
 	s.TaskLog.Infof("NF made successfully for task ID: %d", task.Id)
+
+	for _, test := range task.Tests {
+		s.TaskLog.Infof("Running test: %s for task ID: %d", test, task.Id)
+
+		output, err := s.runTest(test, repoDir)
+		if err != nil {
+			s.TaskLog.Errorf("Failed to run test: %s for task ID: %d, error: %v", test, task.Id, err)
+
+			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, task.Id, test, false, fmt.Sprintf("Failed to run test: %v\nOutput: %s", err, output)))
+			continue
+		}
+
+		s.TaskLog.Infof("Test: %s completed successfully for task ID: %d", test, task.Id)
+		s.TaskLog.Tracef("Output of test: %s for task ID: %d: %s", test, task.Id, output)
+
+		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, task.Id, test, true, output))
+	}
+
+	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, task.Id, "", true, "All tests completed"))
+	s.TaskLog.Infof("All tests completed for task ID: %d", task.Id)
 }
 
 func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string) (string, error) {
@@ -169,7 +189,7 @@ func (s *taskServer) cloneRepo(ctx context.Context, repoDir, currentTimeStamp st
 
 func (s *taskServer) fetchNfPr(nfPrs []model.NfPr, repoDir string) error {
 	for _, nfPr := range nfPrs {
-		s.TaskLog.Debugf("Fetching NF-PR for NF: %s, PR: %s", nfPr.NfName, nfPr.PR)
+		s.TaskLog.Debugf("Fetching NF-PR for NF: %s, PR: %d", nfPr.NfName, nfPr.PR)
 
 		ctx, cancel := context.WithTimeout(context.Background(), constant.FETCH_CMD_TIMEOUT)
 		defer cancel()
@@ -221,4 +241,24 @@ func (s *taskServer) makeNf(repoDir string) error {
 	}
 
 	return nil
+}
+
+func (s *taskServer) runTest(testName, repoDir string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constant.TEST_CMD_TIMEOUT)
+	defer cancel()
+
+	output, err := s.runCmd(
+		ctx,
+		repoDir,
+		"./test.sh",
+		testName,
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			return "", fmt.Errorf("run test timed out for test: %s, error: %v", testName, ctx.Err())
+		}
+		return "", fmt.Errorf("failed to run test: %s, error: %v", testName, err)
+	}
+
+	return output, nil
 }

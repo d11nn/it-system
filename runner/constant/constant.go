@@ -54,5 +54,5 @@ const (
 	CLONE_CMD_TIMEOUT = 30 * time.Second
 	FETCH_CMD_TIMEOUT = 15 * time.Second
 	MAKE_CMD_TIMEOUT  = 3 * time.Minute
-	TEST_CMD_TIMEOUT  = 5 * time.Minute
+	TEST_CMD_TIMEOUT  = 10 * time.Minute
 )
