@@ -75,3 +75,8 @@ type ResponseCancelTask struct {
 type ResponseDeleteTasksHistory struct {
 	Message string `json:"message" binding:"required"`
 }
+
+type ResponseGetTestLog struct {
+	Message string `json:"message" binding:"required"`
+	Log     string `json:"log,omitempty"`
+}

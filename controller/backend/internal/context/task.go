@@ -542,3 +542,14 @@ func (ctx *taskContext) deleteHistory() error {
 
 	return nil
 }
+
+func (ctx *taskContext) getTestLog(id uint64, testName string) (string, error) {
+	logFilePath := fmt.Sprintf("%s/%d/%s.log", ctx.logPath, id, testName)
+
+	logs, err := os.ReadFile(logFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read log file for task %d and test %s: %v", id, testName, err)
+	}
+
+	return string(logs), nil
+}

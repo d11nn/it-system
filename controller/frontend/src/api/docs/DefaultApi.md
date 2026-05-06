@@ -16,6 +16,7 @@ All URIs are relative to *http://127.0.0.1:5000*
 |[**getTask**](#gettask) | **GET** /api/test/task | Get task|
 |[**getTasks**](#gettasks) | **GET** /api/test/tasks | Get tasks|
 |[**getTenants**](#gettenants) | **GET** /api/admin/tenant | Get tenants|
+|[**getTestLog**](#gettestlog) | **GET** /api/test/testlog | Get test log|
 |[**getTestcases**](#gettestcases) | **GET** /api/test/testcase | Get testcases|
 |[**login**](#login) | **POST** /api/login | Login|
 |[**logout**](#logout) | **POST** /api/logout | Logout|
@@ -635,6 +636,62 @@ This endpoint does not have any parameters.
 |**200** | OK |  -  |
 |**401** | Unauthorized |  -  |
 |**403** | Forbidden |  -  |
+|**500** | Internal Server Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getTestLog**
+> ResponseGetTestLog getTestLog()
+
+
+### Example
+
+```typescript
+import {
+    DefaultApi,
+    Configuration
+} from './api';
+
+const configuration = new Configuration();
+const apiInstance = new DefaultApi(configuration);
+
+let id: number; //Task ID (default to undefined)
+let testName: string; //Test name (default to undefined)
+
+const { status, data } = await apiInstance.getTestLog(
+    id,
+    testName
+);
+```
+
+### Parameters
+
+|Name | Type | Description  | Notes|
+|------------- | ------------- | ------------- | -------------|
+| **id** | [**number**] | Task ID | defaults to undefined|
+| **testName** | [**string**] | Test name | defaults to undefined|
+
+
+### Return type
+
+**ResponseGetTestLog**
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+|**200** | OK |  -  |
+|**400** | Bad Request |  -  |
+|**401** | Unauthorized |  -  |
 |**500** | Internal Server Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

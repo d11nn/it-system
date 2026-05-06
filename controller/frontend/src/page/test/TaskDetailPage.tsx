@@ -67,6 +67,96 @@ function normalizeTestStatus(status?: string) {
   return 'unknown'
 }
 
+function normalizeRawLog(log?: string) {
+  if (!log) {
+    return ''
+  }
+
+  return log
+    .replace(/\r\n/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001A\u001C-\u001F\u007F]/g, '')
+}
+
+interface AnsiSegment {
+  text: string
+  color?: string
+  bold?: boolean
+}
+
+const ansiColorMap: Record<number, string> = {
+  30: '#111827',
+  31: '#dc2626',
+  32: '#16a34a',
+  33: '#ca8a04',
+  34: '#2563eb',
+  35: '#a21caf',
+  36: '#0891b2',
+  37: '#d1d5db',
+  90: '#6b7280',
+  91: '#f87171',
+  92: '#4ade80',
+  93: '#facc15',
+  94: '#60a5fa',
+  95: '#e879f9',
+  96: '#22d3ee',
+  97: '#f9fafb',
+}
+
+function parseAnsiLog(log: string): AnsiSegment[] {
+  const segments: AnsiSegment[] = []
+  const ansiRegex = /\u001b\[([0-9;]*)m/g
+
+  let cursor = 0
+  let currentColor: string | undefined
+  let currentBold = false
+
+  let match: RegExpExecArray | null
+  while ((match = ansiRegex.exec(log)) !== null) {
+    const fullMatch = match[0]
+    const params = match[1]
+    const matchIndex = match.index
+
+    if (matchIndex > cursor) {
+      segments.push({
+        text: log.slice(cursor, matchIndex),
+        color: currentColor,
+        bold: currentBold,
+      })
+    }
+
+    const codes = params.length === 0
+      ? [0]
+      : params.split(';').map((value) => Number(value) || 0)
+
+    for (const code of codes) {
+      if (code === 0) {
+        currentColor = undefined
+        currentBold = false
+      } else if (code === 1) {
+        currentBold = true
+      } else if (code === 22) {
+        currentBold = false
+      } else if (code === 39) {
+        currentColor = undefined
+      } else if (ansiColorMap[code]) {
+        currentColor = ansiColorMap[code]
+      }
+    }
+
+    cursor = matchIndex + fullMatch.length
+  }
+
+  if (cursor < log.length) {
+    segments.push({
+      text: log.slice(cursor),
+      color: currentColor,
+      bold: currentBold,
+    })
+  }
+
+  return segments
+}
+
 export default function TaskDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -77,6 +167,10 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false)
+  const [isLogLoading, setIsLogLoading] = useState(false)
+  const [logContent, setLogContent] = useState('')
+  const [activeTestName, setActiveTestName] = useState('')
 
   const taskId = Number(id)
   const fromQueue = searchParams.get('from')
@@ -108,6 +202,7 @@ export default function TaskDetailPage() {
       })
       .filter((test): test is TaskTestItem => Boolean(test))
   }, [task])
+  const renderedLogSegments = useMemo(() => parseAnsiLog(logContent), [logContent])
 
   const api = useMemo(() => new DefaultApi(new Configuration({
     basePath: apiBasePath,
@@ -178,8 +273,44 @@ export default function TaskDetailPage() {
     setIsCancelModalOpen(false)
   }
 
-  function handleOpenTestLog(testName: string) {
-    addError(`Test log API is not implemented yet: ${testName}`)
+  function closeLogModal() {
+    setIsLogModalOpen(false)
+  }
+
+  async function handleOpenTestLog(testName: string) {
+    if (!Number.isFinite(taskId) || taskId <= 0) {
+      addError('Invalid task id')
+      return
+    }
+
+    setActiveTestName(testName)
+    setLogContent('')
+    setIsLogModalOpen(true)
+    setIsLogLoading(true)
+
+    try {
+      const response = await api.getTestLog(
+        taskId,
+        testName,
+        {
+          headers: getUserHeader(),
+        },
+      )
+
+      setLogContent(normalizeRawLog(response.data.log || ''))
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to load test log'
+          : 'Failed to load test log'
+      addError(message)
+      setLogContent('')
+    } finally {
+      setIsLogLoading(false)
+    }
   }
 
   return (
@@ -297,6 +428,41 @@ export default function TaskDetailPage() {
             Are you sure you want to cancel task "#{taskId}"?
           </p>
         </Modal>
+      )}
+
+      {isLogModalOpen && (
+        <div className={styles.logOverlay} onClick={closeLogModal}>
+          <div className={styles.logModal} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.logModalHeader}>
+              <h3>
+                Test Log: {activeTestName || '-'}
+              </h3>
+              <Button variant="secondary" onClick={closeLogModal}>Close</Button>
+            </div>
+
+            <div className={styles.logContentWrap}>
+              {isLogLoading ? (
+                <p className={styles.loading}>Loading test log...</p>
+              ) : (
+                <pre className={styles.logContent}>
+                  {logContent
+                    ? renderedLogSegments.map((segment, index) => (
+                        <span
+                          key={`${index}-${segment.text.length}`}
+                          style={{
+                            color: segment.color,
+                            fontWeight: segment.bold ? 700 : 400,
+                          }}
+                        >
+                          {segment.text}
+                        </span>
+                      ))
+                    : 'No log content'}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )

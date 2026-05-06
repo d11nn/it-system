@@ -42,6 +42,12 @@ func (b *backend) getTestRoutes() util.Routes {
 			Pattern:     "/task",
 			HandlerFunc: b.handleCancelTask,
 		},
+		{
+			Name:        "Get test log",
+			Method:      http.MethodGet,
+			Pattern:     "/testlog",
+			HandlerFunc: b.handleGetTestLog,
+		},
 	}
 }
 
@@ -255,5 +261,48 @@ func (b *backend) handleDeleteTasksHistory(c *gin.Context) {
 	}
 
 	b.TestLog.Infof("Delete tasks history successful for %s", c.ClientIP())
+	c.JSON(http.StatusOK, response)
+}
+
+func (b *backend) handleGetTestLog(c *gin.Context) {
+	b.TestLog.Infof("Get test log request from %s, user: %s", c.ClientIP(), c.GetHeader("user"))
+
+	id := c.Query("id")
+	if id == "" {
+		b.TestLog.Warnf("Get test log request missing id from %s", c.ClientIP())
+		c.JSON(http.StatusBadRequest, model.ResponseGetTestLog{
+			Message: "Missing id parameter",
+		})
+		return
+	}
+
+	testName := c.Query("testName")
+	if testName == "" {
+		b.TestLog.Warnf("Get test log request missing testname from %s", c.ClientIP())
+		c.JSON(http.StatusBadRequest, model.ResponseGetTestLog{
+			Message: "Missing testname parameter",
+		})
+		return
+	}
+
+	uint64Id, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		b.TestLog.Warnf("Invalid task id %s from %s", id, c.ClientIP())
+		c.JSON(http.StatusBadRequest, model.ResponseGetTestLog{
+			Message: "Invalid id parameter",
+		})
+		return
+	}
+
+	response, errDetail := b.Processor.GetTestLog(uint64Id, testName)
+	if errDetail != nil {
+		b.TestLog.Warnf("Get test log failed for %s: %s", c.ClientIP(), errDetail.Detail)
+		c.JSON(errDetail.HttpStatus, model.ResponseGetTestLog{
+			Message: errDetail.Detail,
+		})
+		return
+	}
+
+	b.TestLog.Infof("Get test log successful for %s", c.ClientIP())
 	c.JSON(http.StatusOK, response)
 }

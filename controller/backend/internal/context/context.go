@@ -128,6 +128,10 @@ func (ctx *ItContext) DeleteHistory() error {
 	return ctx.taskContext.deleteHistory()
 }
 
+func (ctx *ItContext) GetTestLog(id uint64, testName string) (string, error) {
+	return ctx.taskContext.getTestLog(id, testName)
+}
+
 func (ctx *ItContext) RunnerExists(name string) bool {
 	return ctx.runnerContext.runnerExists(name)
 }

@@ -217,6 +217,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
 
+  /api/test/testlog:
+    get:
+      summary: Get test log
+      operationId: getTestLog
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          description: Task ID
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 1
+            example: 74
+        - name: testName
+          in: query
+          description: Test name
+          required: true
+          schema:
+            type: string
+            example: TestRegistration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseGetTestLog'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
   /api/admin/test/testcase:
     post:
       summary: Add testcases
@@ -862,6 +911,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NfPr'
+    ResponseGetTestLog:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Test log retrieved successfully
+        log:
+          type: string
+          example: test log content
     RequestSubmitTask:
       type: object
       required:

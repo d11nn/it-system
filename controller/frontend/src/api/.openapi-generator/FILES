@@ -24,6 +24,7 @@ docs/RequestSubmitTask.md
 docs/RequestTestOutput.md
 docs/ResponseGetTask.md
 docs/ResponseGetTasks.md
+docs/ResponseGetTestLog.md
 docs/ResponseRegisterRunner.md
 docs/ResponseRunnerHeartbeat.md
 docs/Runner.md

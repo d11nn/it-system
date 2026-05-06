@@ -197,3 +197,18 @@ func (p *Processor) DeleteTasksHistory() (*model.ResponseDeleteTasksHistory, *mo
 		Message: "Tasks history deleted successfully",
 	}, nil
 }
+
+func (p *Processor) GetTestLog(id uint64, testName string) (*model.ResponseGetTestLog, *model.ErrorDetail) {
+	log, err := p.itContext.GetTestLog(id, testName)
+	if err != nil {
+		return nil, &model.ErrorDetail{
+			HttpStatus: http.StatusInternalServerError,
+			Detail:     fmt.Sprintf("Failed to get test log: %v", err),
+		}
+	}
+
+	return &model.ResponseGetTestLog{
+		Message: "Test log retrieved successfully",
+		Log:     log,
+	}, nil
+}
