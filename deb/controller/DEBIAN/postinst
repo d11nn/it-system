@@ -44,4 +44,5 @@ fi
 
 systemctl daemon-reload || true
 systemctl enable it-system-controller.service || true
+systemctl start it-system-controller.service || true
 exit 0

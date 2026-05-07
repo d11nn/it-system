@@ -1,0 +1,18 @@
+[Unit]
+Description=IT System Runner
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/share/it-system-runner
+Environment="PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="HOME=/usr/share/it-system-runner"
+Environment="GOPATH=/usr/share/it-system-runner/.go"
+Environment="GOMODCACHE=/usr/share/it-system-runner/.go/pkg/mod"
+Environment="GOCACHE=/usr/share/it-system-runner/.cache/go-build"
+ExecStart=/usr/bin/it-system-runner -c /etc/it-system/config-runner.yaml
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

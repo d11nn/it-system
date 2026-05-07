@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+RUNNER_DB_DIR="/usr/share/it-system-runner/.db"
+
+if [ "${1:-}" = "remove" ]; then
+  systemctl stop it-system-runner.service || true
+  systemctl disable it-system-runner.service || true
+
+  if [ -d "$RUNNER_DB_DIR" ]; then
+    find "$RUNNER_DB_DIR" -mindepth 1 -exec rm -rf {} +
+  fi
+fi
+
+exit 0

@@ -1,0 +1,225 @@
+#!/bin/sh
+
+set -e
+
+# dpkg maintainer scripts may run with a restricted PATH.
+export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+CONFIG_FILE="/etc/it-system/config-runner.yaml"
+RUNNER_BASE_DIR="/usr/share/it-system-runner"
+
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[\\&]/\\&/g'
+}
+
+escape_json_string() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+yaml_get_quoted() {
+  key="$1"
+  sed -n "s/^[[:space:]]*${key}:[[:space:]]*\"\(.*\)\"[[:space:]]*$/\1/p" "$CONFIG_FILE" | head -n 1
+}
+
+yaml_get_unquoted() {
+  key="$1"
+  sed -n "s/^[[:space:]]*${key}:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p" "$CONFIG_FILE" | head -n 1
+}
+
+prompt_value() {
+  label="$1"
+  default_value="$2"
+  printf "%s [%s]: " "$label" "$default_value" >&2
+  IFS= read -r input_value || true
+  if [ -z "$input_value" ]; then
+    printf '%s' "$default_value"
+  else
+    printf '%s' "$input_value"
+  fi
+}
+
+prompt_password() {
+  label="$1"
+  printf "%s: " "$label" >&2
+  stty -echo
+  IFS= read -r input_value || true
+  stty echo
+  printf "\n" >&2
+  printf '%s' "$input_value"
+}
+
+extract_http_status() {
+  printf '%s' "$1" | sed -n '$p'
+}
+
+extract_http_body() {
+  printf '%s' "$1" | sed '$d'
+}
+
+extract_json_token() {
+  printf '%s' "$1" | tr -d '\n' | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+}
+
+update_config_values() {
+  runner_name_escaped="$(escape_sed_replacement "$1")"
+  controller_ip_escaped="$(escape_sed_replacement "$3")"
+  controller_port_escaped="$(escape_sed_replacement "$4")"
+
+  sed -i "0,/^[[:space:]]*name:[[:space:]]*\".*\"[[:space:]]*$/s//  name: \"${runner_name_escaped}\"/" "$CONFIG_FILE"
+  sed -i "0,/^[[:space:]]*controller_ip:[[:space:]]*\".*\"[[:space:]]*$/s//  controller_ip: \"${controller_ip_escaped}\"/" "$CONFIG_FILE"
+  sed -i "0,/^[[:space:]]*controller_port:[[:space:]]*[0-9][0-9]*[[:space:]]*$/s//  controller_port: ${controller_port_escaped}/" "$CONFIG_FILE"
+}
+
+save_runner_token() {
+  token_value="$1"
+  token_path="$(yaml_get_quoted token_path)"
+
+  if [ -z "$token_path" ]; then
+    echo "[it-system-runner] token_path missing in config"
+    exit 1
+  fi
+
+  case "$token_path" in
+    /*) token_file="$token_path" ;;
+    *) token_file="$RUNNER_BASE_DIR/$token_path" ;;
+  esac
+
+  mkdir -p "$(dirname "$token_file")"
+  printf '%s' "$token_value" > "$token_file"
+  chmod 600 "$token_file"
+}
+
+resolve_token_file() {
+  token_path="$(yaml_get_quoted token_path)"
+
+  if [ -z "$token_path" ]; then
+    return 1
+  fi
+
+  case "$token_path" in
+    /*) printf '%s' "$token_path" ;;
+    *) printf '%s' "$RUNNER_BASE_DIR/$token_path" ;;
+  esac
+}
+
+needs_registration() {
+  token_file="$(resolve_token_file 2>/dev/null || true)"
+
+  if [ -z "$token_file" ]; then
+    return 0
+  fi
+
+  if [ ! -s "$token_file" ]; then
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_required_tools() {
+  missing_tools=""
+
+  for tool in git make go; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      missing_tools="$missing_tools $tool"
+    fi
+  done
+
+  if [ -n "$missing_tools" ]; then
+    echo "[it-system-runner] missing required tools:$missing_tools"
+    echo "[it-system-runner] PATH during install: $PATH"
+    echo "[it-system-runner] please install required packages and retry"
+    exit 1
+  fi
+}
+
+register_runner() {
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    echo "[it-system-runner] interactive terminal is required for first-time install"
+    echo "[it-system-runner] please run installation from an interactive shell"
+    exit 1
+  fi
+
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "[it-system-runner] config not found: $CONFIG_FILE"
+    exit 1
+  fi
+
+  default_runner_name="$(yaml_get_quoted name)"
+  default_controller_ip="$(yaml_get_quoted controller_ip)"
+  default_controller_port="$(yaml_get_unquoted controller_port)"
+
+  if [ -z "$default_runner_name" ]; then default_runner_name="runner"; fi
+  if [ -z "$default_controller_ip" ]; then default_controller_ip="127.0.0.1"; fi
+  if [ -z "$default_controller_port" ]; then default_controller_port="8888"; fi
+
+  echo "Register IT System Runner"
+  runner_name="$(prompt_value "Runner name" "$default_runner_name")"
+  runner_ip="$(prompt_value "Runner IP" "127.0.0.1")"
+  controller_ip="$(prompt_value "Controller IP" "$default_controller_ip")"
+  controller_port="$(prompt_value "Controller Port" "$default_controller_port")"
+  admin_username="$(prompt_value "Controller admin username" "admin")"
+  admin_password="$(prompt_password "Controller admin password")"
+
+  if [ -z "$admin_password" ]; then
+    echo "[it-system-runner] admin password cannot be empty"
+    exit 1
+  fi
+
+  update_config_values "$runner_name" "$runner_ip" "$controller_ip" "$controller_port"
+
+  login_payload=$(printf '{"username":"%s","password":"%s"}' "$(escape_json_string "$admin_username")" "$(escape_json_string "$admin_password")")
+  login_result=$(curl -sS -w '\n%{http_code}' -H 'Content-Type: application/json' -X POST -d "$login_payload" "http://${controller_ip}:${controller_port}/api/login")
+  login_status="$(extract_http_status "$login_result")"
+  login_body="$(extract_http_body "$login_result")"
+
+  if [ "$login_status" != "200" ]; then
+    echo "[it-system-runner] failed to login controller admin (status: $login_status)"
+    echo "$login_body"
+    exit 1
+  fi
+
+  admin_token="$(extract_json_token "$login_body")"
+  if [ -z "$admin_token" ]; then
+    echo "[it-system-runner] login success but token not found"
+    exit 1
+  fi
+
+  register_payload=$(printf '{"name":"%s","ip":"%s"}' "$(escape_json_string "$runner_name")" "$(escape_json_string "$runner_ip")")
+  register_result=$(curl -sS -w '\n%{http_code}' -H 'Content-Type: application/json' -H "Authorization: Bearer ${admin_token}" -X POST -d "$register_payload" "http://${controller_ip}:${controller_port}/api/admin/runner")
+  register_status="$(extract_http_status "$register_result")"
+  register_body="$(extract_http_body "$register_result")"
+
+  if [ "$register_status" != "200" ]; then
+    echo "[it-system-runner] failed to register runner (status: $register_status)"
+    echo "$register_body"
+    exit 1
+  fi
+
+  runner_token="$(extract_json_token "$register_body")"
+  if [ -z "$runner_token" ]; then
+    echo "[it-system-runner] register success but runner token not found"
+    exit 1
+  fi
+
+  save_runner_token "$runner_token"
+}
+
+if [ "${1:-}" = "configure" ]; then
+  ensure_required_tools
+
+  mkdir -p "$RUNNER_BASE_DIR"
+  mkdir -p "$RUNNER_BASE_DIR/.go/pkg/mod"
+  mkdir -p "$RUNNER_BASE_DIR/.cache/go-build"
+
+  # Ask registration questions when token is missing (fresh install/reinstall).
+  if needs_registration; then
+    register_runner
+  fi
+
+  systemctl daemon-reload || true
+  systemctl enable it-system-runner.service || true
+  systemctl start it-system-runner.service || true
+fi
+
+exit 0

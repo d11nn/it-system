@@ -1,0 +1,9 @@
+Package: it-system-runner
+Version: <version>
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: Alonza alonza.tu@gmail.com
+Depends: systemd, curl, git, make
+Description: free5GC IT System Runner
+ Runner service for free5GC IT system.
