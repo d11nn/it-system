@@ -1,0 +1,47 @@
+#!/bin/sh
+
+set -e
+
+CONFIG_FILE="/etc/it-system/config-controller.yaml"
+DEFAULT_PASSWORD="0000"
+
+escape_sed_replacement() {
+	# Escape replacement string for sed command.
+	printf '%s' "$1" | sed 's/[\\&]/\\&/g'
+}
+
+update_admin_password() {
+	if [ ! -f "$CONFIG_FILE" ]; then
+		echo "[it-system-controller] config not found: $CONFIG_FILE"
+		return 0
+	fi
+
+	password="$DEFAULT_PASSWORD"
+
+	if [ -t 0 ] && [ -t 1 ]; then
+		echo "Set admin password for IT System Controller"
+		echo "Press Enter to use default password: $DEFAULT_PASSWORD"
+		printf "Admin password: "
+		stty -echo
+		IFS= read -r input_password || true
+		stty echo
+		printf "\n"
+
+		if [ -n "$input_password" ]; then
+			password="$input_password"
+		fi
+	else
+		echo "[it-system-controller] non-interactive install, using default admin password: $DEFAULT_PASSWORD"
+	fi
+
+	escaped_password="$(escape_sed_replacement "$password")"
+	sed -i "0,/^[[:space:]]*password:[[:space:]]*\".*\"[[:space:]]*$/s//  password: \"$escaped_password\"/" "$CONFIG_FILE"
+}
+
+if [ "${1:-}" = "configure" ]; then
+	update_admin_password
+fi
+
+systemctl daemon-reload || true
+systemctl enable it-system-controller.service || true
+exit 0

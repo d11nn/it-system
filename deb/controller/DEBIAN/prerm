@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+if [ "$1" = "remove" ]; then
+  systemctl stop it-system-controller.service || true
+  systemctl disable it-system-controller.service || true
+fi
+exit 0

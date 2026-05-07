@@ -1,0 +1,8 @@
+Package: it-system-controller
+Version: <version>
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: Alonza alonza.tu@gmail.com
+Depends: systemd
+Description: free5GC IT System Controller service for free5GC IT system.

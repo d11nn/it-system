@@ -1,0 +1,13 @@
+[Unit]
+Description=IT System Controller
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/share/it-system-controller
+ExecStart=/usr/bin/it-system-controller -c /etc/it-system/config-controller.yaml
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
