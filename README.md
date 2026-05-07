@@ -65,3 +65,33 @@ A free5GC developer friendly integration test system.
 ### Runner Flow
 
 ![runnerFlow](./image/runnerFlow.png)
+
+## Install
+
+### Controller
+
+```bash
+wget https://github.com/Alonza0314/it-system/releases/download/v0.0.0/it-system-controller_0.0.0_amd64.deb
+sudo dpkg -i it-system-controller_0.0.0_amd64.deb
+```
+
+### Runner
+
+```bash
+wget https://github.com/Alonza0314/it-system/releases/download/v0.0.0/it-system-runner_0.0.0_amd64.deb
+sudo dpkg -i it-system-runner_0.0.0_amd64.deb
+```
+
+### Trouble Shooting
+
+If get in dependency error:
+
+```bash
+sudo apt-get -f install
+```
+
+Then re-install with `dpkg -i`.
+
+## Remove
+
+Please refer to: [controller](./deb/controller.md) / [runner](./deb/runenr.md).
