@@ -183,6 +183,21 @@ func convertTaskToResponseTask(tasks []task) []model.TaskSimple {
 
 func convertTestsToPipelines(tests []string) []pipeline {
 	pipelines := make([]pipeline, len(tests))
+	pipelines = append(pipelines, []pipeline{
+		{
+			name:   constant.TESTCASE_PREPARE_FREE5GC,
+			status: constant.TASK_STATUS_PENDING,
+		},
+		{
+			name:   constant.TESTCASE_FETCH_PRS,
+			status: constant.TASK_STATUS_PENDING,
+		},
+		{
+			name:   constant.TESTCASE_MAKE_NF,
+			status: constant.TASK_STATUS_PENDING,
+		},
+	}...)
+
 	for i, test := range tests {
 		pipelines[i] = pipeline{
 			name:   test,
@@ -190,6 +205,10 @@ func convertTestsToPipelines(tests []string) []pipeline {
 		}
 	}
 
+	pipelines = append(pipelines, pipeline{
+		name:   constant.TESTCASE_CLEANUP,
+		status: constant.TASK_STATUS_PENDING,
+	})
 	return pipelines
 }
 

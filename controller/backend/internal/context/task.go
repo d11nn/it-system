@@ -94,6 +94,7 @@ type task struct {
 }
 
 func newTask(id uint64, username string, createTime int64, pipelines []pipeline, nfPrList []nfPr) *task {
+	
 	return &task{
 		id:         id,
 		username:   username,

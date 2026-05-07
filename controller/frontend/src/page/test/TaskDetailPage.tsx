@@ -47,6 +47,25 @@ interface TaskTestItem {
   status?: string
 }
 
+function getTaskTestOrder(name: string) {
+  const normalized = name.toLowerCase()
+
+  if (normalized === 'prepare_free5gc' || normalized === 'preprare_free5gc') {
+    return 0
+  }
+  if (normalized === 'fetch_prs') {
+    return 1
+  }
+  if (normalized === 'make_nf') {
+    return 2
+  }
+  if (normalized === 'cleanup') {
+    return 4
+  }
+
+  return 3
+}
+
 function normalizeTestStatus(status?: string) {
   const normalized = (status || '').toLowerCase()
   if (normalized.includes('success')) {
@@ -180,9 +199,9 @@ export default function TaskDetailPage() {
     const rawTests = (task?.tests || []) as unknown[]
 
     return rawTests
-      .map((item) => {
+      .map((item, index) => {
         if (typeof item === 'string') {
-          return { name: item }
+          return { name: item, index }
         }
 
         if (typeof item !== 'object' || item === null) {
@@ -198,9 +217,21 @@ export default function TaskDetailPage() {
         return {
           name,
           status: typed.status,
+          index,
         }
       })
-      .filter((test): test is TaskTestItem => Boolean(test))
+      .filter((test): test is TaskTestItem & { index: number } => Boolean(test))
+      .sort((a, b) => {
+        const orderA = getTaskTestOrder(a.name)
+        const orderB = getTaskTestOrder(b.name)
+
+        if (orderA !== orderB) {
+          return orderA - orderB
+        }
+
+        return a.index - b.index
+      })
+      .map(({ index: _index, ...test }) => test)
   }, [task])
   const renderedLogSegments = useMemo(() => parseAnsiLog(logContent), [logContent])
 

@@ -71,3 +71,11 @@ const (
 	RUNNER_STATUS_IDLE    = "idle"
 	RUNNER_STATUS_RUNNING = "running"
 )
+
+// basic test case
+const (
+	TESTCASE_PREPARE_FREE5GC = "prepare_free5gc"
+	TESTCASE_FETCH_PRS       = "fetch_prs"
+	TESTCASE_MAKE_NF         = "make_nf"
+	TESTCASE_CLEANUP         = "cleanup"
+)
