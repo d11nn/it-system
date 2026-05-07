@@ -45,12 +45,19 @@ func (p *Processor) Login(req *model.RequestLogin) (*model.ResponseLogin, *model
 		"user": req.Username,
 	}
 
-	role, err := p.itContext.LoadFromDb(constant.BUCKET_TENANT, req.Username)
-	if err != nil {
-		p.ProcLog.Errorf("Failed to load role for tenant %s from database: %v", req.Username, err)
-		return nil, &model.ErrorDetail{
-			HttpStatus: http.StatusInternalServerError,
-			Detail:     fmt.Sprintf("Failed to load role for tenant %s from database: %v", req.Username, err),
+	var (
+		role string
+		err  error
+	)
+
+	if req.Username != p.username {
+		role, err = p.itContext.LoadFromDb(constant.BUCKET_TENANT, req.Username)
+		if err != nil {
+			p.ProcLog.Errorf("Failed to load role for tenant %s from database: %v", req.Username, err)
+			return nil, &model.ErrorDetail{
+				HttpStatus: http.StatusInternalServerError,
+				Detail:     fmt.Sprintf("Failed to load role for tenant %s from database: %v", req.Username, err),
+			}
 		}
 	}
 	if req.Username == constant.USER_LEVEL_ADMIN {
