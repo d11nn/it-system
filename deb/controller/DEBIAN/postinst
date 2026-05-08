@@ -3,7 +3,20 @@
 set -e
 
 CONFIG_FILE="/etc/it-system/config-controller.yaml"
+APP_WORKDIR="/usr/share/it-system-controller"
 DEFAULT_PASSWORD="0000"
+
+resolve_webhook_path() {
+	path="$1"
+	case "$path" in
+		/*)
+			printf '%s' "$path"
+			;;
+		*)
+			printf '%s/%s' "$APP_WORKDIR" "$path"
+			;;
+	esac
+}
 
 get_discord_enabled() {
 	if [ ! -f "$CONFIG_FILE" ]; then
@@ -58,6 +71,13 @@ write_discord_webhook_url() {
 	# Write without trailing newline to avoid accidental parse issues.
 	printf '%s' "$webhook_url" > "$webhook_path"
 	chmod 600 "$webhook_path" || true
+
+	if [ ! -s "$webhook_path" ]; then
+		echo "[it-system-controller] failed to persist Discord webhook URL to: $webhook_path"
+		exit 1
+	fi
+
+	echo "[it-system-controller] Discord webhook URL saved to: $webhook_path"
 }
 
 update_discord_webhook_url() {
@@ -76,6 +96,7 @@ update_discord_webhook_url() {
 		echo "[it-system-controller] webhookUrlPath not found in $CONFIG_FILE"
 		exit 1
 	fi
+	webhook_path="$(resolve_webhook_path "$webhook_path")"
 
 	if [ -t 0 ] && [ -t 1 ]; then
 		if [ -s "$webhook_path" ]; then
