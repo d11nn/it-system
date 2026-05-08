@@ -1,24 +1,32 @@
 .page {
   display: grid;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.2rem;
+  min-height: 220px;
+  border: 0;
+  border-radius: 18px;
+  background: #000000;
+  padding: clamp(1.3rem, 3.2vw, 2.6rem);
+  box-shadow: var(--shadow-card);
 }
 
 .header h2 {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
-  color: var(--text);
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.028em;
+  color: #ffffff;
 }
 
 .header p {
-  margin: 0.3rem 0 0;
-  color: var(--text-muted);
+  margin: 0.52rem 0 0;
+  color: #cccccc;
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -29,21 +37,21 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.76rem;
+  padding: 0.24rem 0.58rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .statusSuccess {
-  background: #eafbf3;
-  color: #1c9a48;
+  background: var(--success-soft);
+  color: #1c7a3e;
 }
 
 .statusFailed {
-  background: #fff1f3;
-  color: #d70015;
+  background: var(--danger-soft);
+  color: var(--danger-ink);
 }
 
 .statusCanceled {
@@ -65,14 +73,15 @@
 .actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .card {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.12rem;
+  box-shadow: var(--shadow-card);
 }
 
 .loading {
@@ -83,22 +92,27 @@
 .metaGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: 0.72rem;
 }
 
 .metaGrid p {
   margin: 0;
   color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 0.72rem;
 }
 
 .section {
-  margin-top: 1rem;
+  margin-top: 1.08rem;
 }
 
 .section h3 {
   margin: 0 0 0.5rem;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 1.12rem;
+  letter-spacing: -0.01em;
 }
 
 .tagList {
@@ -113,10 +127,10 @@
 .tag {
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0.32rem 0.6rem;
+  padding: 0.3rem 0.62rem;
   color: var(--text);
   background: var(--surface-muted);
-  font-size: 0.87rem;
+  font-size: 0.84rem;
 }
 
 .empty {
@@ -132,8 +146,9 @@
 
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: var(--radius-md);
+  background: #ffffff;
 }
 
 .table {
@@ -144,13 +159,16 @@
 .table th,
 .table td {
   text-align: left;
-  padding: 0.65rem 0.8rem;
-  border-bottom: 1px solid #ededf1;
+  padding: 0.76rem 0.84rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .table th {
-  background: var(--surface-muted);
+  background: #f8f8fa;
   color: var(--text);
+  font-size: 0.79rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .testStatus {
@@ -158,7 +176,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.16rem 0.48rem;
+  padding: 0.18rem 0.5rem;
   font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -166,13 +184,13 @@
 
 .logButton {
   border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.34rem 0.62rem;
+  border-radius: var(--radius-pill);
+  padding: 0.36rem 0.66rem;
   background: var(--surface);
-  color: var(--text);
+  color: var(--accent);
   cursor: pointer;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .logButton:hover {
@@ -203,7 +221,7 @@
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(15, 23, 42, 0.58);
+  background: rgba(0, 0, 0, 0.52);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -212,11 +230,10 @@
 
 .logModal {
   width: min(1100px, 96vw);
-  height: min(82vh, 900px);
+  height: min(84vh, 900px);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -227,7 +244,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
 }
@@ -235,7 +252,7 @@
 .logModalHeader h3 {
   margin: 0;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 1.04rem;
 }
 
 .logContentWrap {
@@ -250,12 +267,27 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
-  font-size: 0.81rem;
+  font-size: 0.83rem;
   line-height: 1.38;
   color: var(--text);
 }
 
 @media (max-width: 760px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 0;
+  }
+
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
   .logModal {
     width: 100%;
     height: min(90vh, 900px);

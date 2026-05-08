@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(29, 29, 31, 0.45);
+  background-color: rgba(0, 0, 0, 0.52);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,34 +12,36 @@
 }
 
 .modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 1.4rem;
-  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #ededf0;
+  padding: 1.2rem;
+  border-radius: 18px;
   width: 100%;
   max-width: 500px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-overlay);
+  backdrop-filter: blur(10px);
 }
 
 .header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .title {
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.24rem;
+  font-weight: 600;
+  letter-spacing: -0.022em;
   color: var(--text);
   margin: 0;
 }
 
 .body {
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
 }
 
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.72rem;
 }
 
 .formGroup {
@@ -49,20 +51,21 @@
 .label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #1e293b;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: 0.72rem 0.86rem;
+  border: 1px solid #d4d4d8;
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
+  background: #f8fafc;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+  border-color: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.15);
 }

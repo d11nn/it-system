@@ -16,14 +16,14 @@
   font-size: 0.875rem;
   text-align: left;
   padding: 0.75rem 1rem;
-  background: #f3fbf5;
+  background: var(--success-soft);
   border-radius: 12px;
-  border: 1px solid #b8e0c2;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #c7e0ce;
+  box-shadow: var(--shadow-md);
   min-width: 280px;
   max-width: 400px;
   transform: translateX(120%);
-  animation: slideIn 0.3s ease-out forwards;
+  animation: slideIn 0.26s ease-out forwards;
   transition: transform 0.3s ease-out, top 0.3s ease-out;
 }
 
@@ -34,7 +34,7 @@
 .closeButton {
   background: none;
   border: none;
-  color: #0f8d3b;
+  color: #1c7a3e;
   font-size: 1.25rem;
   line-height: 1;
   padding: 0;

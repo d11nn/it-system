@@ -1,62 +1,64 @@
 .dashboard {
   display: grid;
-  gap: 1rem;
+  gap: 12px;
   background: transparent;
-  border-radius: 0;
-  padding: 1rem;
+  padding: 0;
 }
 
 .topBar {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 4px solid var(--accent);
+  gap: 1.2rem;
+  background: #000000;
+  min-height: 300px;
   border-radius: 18px;
-  padding: 1.2rem;
+  padding: clamp(1.6rem, 4vw, 4rem);
 }
 
 .eyebrow {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
+  color: #cccccc;
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .topBar h2 {
   margin: 0;
-  font-size: clamp(1.4rem, 2.8vw, 2rem);
-  color: var(--text);
+  font-size: clamp(2.3rem, 6vw, 4rem);
+  line-height: 1.07;
+  letter-spacing: -0.028em;
+  color: #ffffff;
+  max-width: 18ch;
 }
 
 .subtitle {
-  margin: 0.35rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.95rem;
+  margin: 0.82rem 0 0;
+  color: #cccccc;
+  font-size: clamp(1.02rem, 2vw, 1.32rem);
+  max-width: 40ch;
 }
 
 .refreshButton {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.6rem 0.95rem;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.66rem 1.18rem;
   cursor: pointer;
-  font-weight: 600;
-  background: var(--accent-soft);
-  color: var(--text);
+  font-weight: 400;
+  background: #0066cc;
+  color: #ffffff;
 }
 
 .refreshButton:hover {
-  background: #dcecff;
+  background: #0071e3;
 }
 
 .kpiGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .tileButton {
@@ -68,82 +70,90 @@
 }
 
 .kpiCard {
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  padding: 0.9rem 1rem;
-  background: var(--surface);
-  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  border-radius: 18px;
+  border: 1px solid #e0e0e0;
+  min-height: 180px;
+  padding: clamp(1rem, 2.6vw, 2rem);
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 .tileButton:hover .kpiCard,
 .tileButton:hover .detailCard {
-  transform: translateY(-2px);
-  border-color: #b6b6bc;
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
 }
 
 .kpiTestcase {
-  border-top: 3px solid var(--accent);
-  background: var(--accent-soft);
+  background: #ffffff;
 }
 
 .kpiTenant {
-  border-top: 3px solid #30b0c7;
-  background: #ebf9fc;
+  background: #fafafc;
 }
 
 .kpiTask {
-  border-top: 3px solid #ff9f0a;
-  background: var(--warning-soft);
+  background: #272729;
 }
 
 .kpiRunner {
-  border-top: 3px solid #5856d6;
-  background: var(--violet-soft);
+  background: #2a2a2c;
 }
 
 .kpiLabel {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
+  color: #7a7a7a;
+  font-size: 0.8rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .kpiValue {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.9rem, 4vw, 2.5rem);
-  font-weight: 800;
+  margin: 0.62rem 0 0;
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  font-weight: 600;
+  line-height: 1.07;
+  letter-spacing: -0.028em;
   color: var(--text);
+}
+
+.kpiTask .kpiLabel,
+.kpiRunner .kpiLabel {
+  color: #d2d2d7;
+}
+
+.kpiTask .kpiValue,
+.kpiRunner .kpiValue {
+  color: #ffffff;
 }
 
 .detailGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .detailCard {
   border-radius: 18px;
-  border: 1px solid var(--border);
-  padding: 1rem;
-  min-height: 230px;
+  border: 1px solid #e0e0e0;
+  padding: clamp(1rem, 2.6vw, 2rem);
+  min-height: 360px;
   display: grid;
   align-content: start;
-  gap: 0.9rem;
-  transition: transform 120ms ease, border-color 120ms ease;
+  gap: 1.2rem;
+  transition: transform 180ms ease;
   background: var(--surface);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.05);
 }
 
 .taskPanel {
-  border-top: 3px solid #30b0c7;
-  background: #f6fcff;
+  background: #ffffff;
 }
 
 .runnerPanel {
-  border-top: 3px solid #5856d6;
-  background: #faf7ff;
+  background: #1d1d1f;
 }
 
 .panelHeader {
@@ -156,19 +166,23 @@
 .panelHeader h3 {
   margin: 0;
   color: var(--text);
+  font-size: clamp(1.55rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
 }
 
 .panelMetric {
   margin: 0;
   color: var(--text);
-  font-size: clamp(1.7rem, 4vw, 2.4rem);
-  font-weight: 800;
+  font-size: clamp(2.5rem, 5.2vw, 4rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.028em;
 }
 
 .panelStats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: 0.65rem;
 }
 
 .taskPanel .panelStats {
@@ -176,54 +190,60 @@
 }
 
 .statBlock {
-  border: 1px solid;
-  border-radius: 12px;
-  padding: 0.75rem 0.85rem;
-  background: var(--surface-muted);
-}
-
-.taskPanel .statBlock:first-child,
-.runnerPanel .statBlock:first-child {
-  border-color: var(--border);
-  background: var(--surface-muted);
-}
-
-.taskPanel .statBlock:last-child,
-.runnerPanel .statBlock:nth-child(2) {
-  border-color: var(--border);
-  background: var(--surface-muted);
-}
-
-.taskPanel .statBlock:nth-child(3) {
-  border-color: #b8e2c6;
-  background: var(--success-soft);
-}
-
-.runnerPanel .statBlock:last-child {
-  border-color: #b9b4ec;
-  background: var(--violet-soft);
+  border: 1px solid #e5e5e7;
+  border-radius: 11px;
+  padding: 0.78rem 0.88rem;
+  background: #ffffff;
 }
 
 .statLabel {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
+  color: #7a7a7a;
+  font-size: 0.74rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .statValue {
-  margin: 0.35rem 0 0;
+  margin: 0.5rem 0 0;
   color: var(--text);
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  font-weight: 800;
+  font-size: clamp(2rem, 3.8vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.runnerPanel .panelHeader h3,
+.runnerPanel .panelMetric {
+  color: #ffffff;
+}
+
+.runnerPanel .statBlock {
+  border-color: #3c3c3f;
+  background: #252527;
+}
+
+.runnerPanel .statLabel {
+  color: #d2d2d7;
+}
+
+.runnerPanel .statValue {
+  color: #ffffff;
 }
 
 @media (max-width: 900px) {
+  .topBar h2 {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .topBar {
     align-items: flex-start;
     flex-direction: column;
+    min-height: 0;
   }
 
   .panelHeader {
@@ -233,6 +253,16 @@
 
   .taskPanel .panelStats,
   .runnerPanel .panelStats {
+    grid-template-columns: 1fr;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .kpiGrid {
     grid-template-columns: 1fr;
   }
 }
