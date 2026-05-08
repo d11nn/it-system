@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/Alonza0314/it-system/controller/backend/config"
@@ -42,7 +44,10 @@ func controllerFunc(cmd *cobra.Command, args []string) {
 	var discordWebhookURL string
 	if controllerConfig.Backend.Discord.Enabled {
 		if url, err := os.ReadFile(controllerConfig.Backend.Discord.WebhookUrlPath); err == nil {
-			discordWebhookURL = string(url)
+			discordWebhookURL = strings.TrimSpace(string(url))
+			if discordWebhookURL == "" {
+				panic(fmt.Errorf("discord webhook URL is empty in %s", controllerConfig.Backend.Discord.WebhookUrlPath))
+			}
 		} else {
 			panic(err)
 		}

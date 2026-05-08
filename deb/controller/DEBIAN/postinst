@@ -5,6 +5,110 @@ set -e
 CONFIG_FILE="/etc/it-system/config-controller.yaml"
 DEFAULT_PASSWORD="0000"
 
+get_discord_enabled() {
+	if [ ! -f "$CONFIG_FILE" ]; then
+		return 1
+	fi
+
+	awk '
+		/^[[:space:]]*discord:[[:space:]]*$/ { in_discord=1; next }
+		in_discord && /^[[:space:]]{2}[A-Za-z0-9_-]+:[[:space:]]*$/ { in_discord=0 }
+		in_discord && /^[[:space:]]+enabled:[[:space:]]*/ {
+			line=$0
+			sub(/.*enabled:[[:space:]]*/, "", line)
+			gsub(/["[:space:]]/, "", line)
+			print line
+			exit
+		}
+	' "$CONFIG_FILE"
+}
+
+get_discord_webhook_path() {
+	if [ ! -f "$CONFIG_FILE" ]; then
+		return 1
+	fi
+
+	awk '
+		/^[[:space:]]*discord:[[:space:]]*$/ { in_discord=1; next }
+		in_discord && /^[[:space:]]{2}[A-Za-z0-9_-]+:[[:space:]]*$/ { in_discord=0 }
+		in_discord && /^[[:space:]]+webhookUrlPath:[[:space:]]*/ {
+			line=$0
+			sub(/.*webhookUrlPath:[[:space:]]*/, "", line)
+			gsub(/^["[:space:]]+|["[:space:]]+$/, "", line)
+			print line
+			exit
+		}
+	' "$CONFIG_FILE"
+}
+
+write_discord_webhook_url() {
+	webhook_url="$1"
+	webhook_path="$2"
+
+	if [ -z "$webhook_path" ]; then
+		echo "[it-system-controller] webhookUrlPath is empty in $CONFIG_FILE"
+		exit 1
+	fi
+
+	webhook_dir="$(dirname "$webhook_path")"
+	if [ ! -d "$webhook_dir" ]; then
+		mkdir -p "$webhook_dir"
+	fi
+
+	# Write without trailing newline to avoid accidental parse issues.
+	printf '%s' "$webhook_url" > "$webhook_path"
+	chmod 600 "$webhook_path" || true
+}
+
+update_discord_webhook_url() {
+	if [ ! -f "$CONFIG_FILE" ]; then
+		echo "[it-system-controller] config not found: $CONFIG_FILE"
+		return 0
+	fi
+
+	discord_enabled="$(get_discord_enabled)"
+	if [ "$discord_enabled" != "true" ]; then
+		return 0
+	fi
+
+	webhook_path="$(get_discord_webhook_path)"
+	if [ -z "$webhook_path" ]; then
+		echo "[it-system-controller] webhookUrlPath not found in $CONFIG_FILE"
+		exit 1
+	fi
+
+	if [ -t 0 ] && [ -t 1 ]; then
+		if [ -s "$webhook_path" ]; then
+			echo "Set Discord webhook URL for IT System Controller"
+			echo "Press Enter to keep existing webhook URL from: $webhook_path"
+			printf "Discord webhook URL: "
+			IFS= read -r new_webhook || true
+
+			if [ -n "$new_webhook" ]; then
+				write_discord_webhook_url "$new_webhook" "$webhook_path"
+			else
+				echo "Keep existing Discord webhook URL"
+			fi
+		else
+			echo "Discord webhook URL file does not exist: $webhook_path"
+			printf "Discord webhook URL (required): "
+			IFS= read -r new_webhook || true
+			if [ -z "$new_webhook" ]; then
+				echo "[it-system-controller] webhook URL is required for first-time Discord setup"
+				exit 1
+			fi
+			write_discord_webhook_url "$new_webhook" "$webhook_path"
+		fi
+	else
+		if [ -s "$webhook_path" ]; then
+			echo "[it-system-controller] non-interactive install, keep existing Discord webhook URL"
+		else
+			echo "[it-system-controller] non-interactive install cannot prompt for Discord webhook URL and no existing value was found"
+			exit 1
+		fi
+	fi
+}
+
 escape_sed_replacement() {
 	# Escape replacement string for sed command.
 	printf '%s' "$1" | sed 's/[\\&]/\\&/g'
@@ -40,6 +144,7 @@ update_admin_password() {
 
 if [ "${1:-}" = "configure" ]; then
 	update_admin_password
+	update_discord_webhook_url
 fi
 
 systemctl daemon-reload || true
