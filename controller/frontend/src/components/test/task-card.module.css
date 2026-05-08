@@ -1,19 +1,19 @@
 .card {
   width: 100%;
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
-  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 18px;
   padding: 0.8rem;
-  background: var(--surface);
+  background: #ffffff;
   text-align: left;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition: transform 120ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .card:hover {
-  transform: translateY(-1px);
-  border-color: #b8b8be;
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+  border-color: #c8c8ce;
+  box-shadow: var(--shadow-md);
 }
 
 .header {
@@ -25,8 +25,9 @@
 
 .id {
   margin: 0;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .statusWrap {

@@ -45,6 +45,7 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.heroGlow} aria-hidden="true" />
       <NotificationContainer
         errors={errors}
         successes={successes}

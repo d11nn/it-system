@@ -1,5 +1,4 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import Button from '../../components/button/button'
 import styles from './app-layout.module.css'
 
 export default function AppLayout() {
@@ -13,11 +12,21 @@ export default function AppLayout() {
 
   return (
     <div className={styles.layout}>
-      <aside className={styles.sidebar}>
-        <div>
-          <p className={styles.badge}>free5GC</p>
-          <h1 className={styles.brand}>IT System</h1>
+      <header className={styles.globalNav}>
+        <div className={styles.globalNavInner}>
+          <div className={styles.brandWrap}>
+            <p className={styles.badge}>free5GC</p>
+            <h1 className={styles.brand}>IT System</h1>
+          </div>
 
+          <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <div className={styles.subNav}>
+        <div className={styles.subNavInner}>
           <nav className={styles.nav}>
             <NavLink
               end
@@ -52,14 +61,12 @@ export default function AppLayout() {
             </NavLink>
           </nav>
         </div>
-
-        <div className={styles.logoutWrap}>
-          <Button variant="secondary" onClick={handleLogout}>Logout</Button>
-        </div>
-      </aside>
+      </div>
 
       <main className={styles.content}>
-        <Outlet />
+        <div className={styles.contentInner}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )

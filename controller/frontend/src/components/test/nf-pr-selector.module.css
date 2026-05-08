@@ -26,17 +26,17 @@
 
 .select {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.55rem 0.65rem;
+  border: 1px solid #d4d4d8;
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.7rem;
   font-size: 0.9rem;
   color: var(--text);
-  background: var(--surface);
+  background: #f8fafc;
 }
 
 .select:disabled {
-  background: #f1f1f3;
-  color: #9d9da3;
+  background: #f3f3f5;
+  color: var(--text-muted);
 }
 
 .select:focus {

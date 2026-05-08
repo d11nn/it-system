@@ -1,21 +1,22 @@
 .button {
-  padding: 0.62rem 1.1rem;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.9rem;
+  padding: 0.64rem 1.16rem;
+  border-radius: var(--radius-pill);
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background-color 140ms ease, transform 120ms ease, box-shadow 140ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 120ms ease, box-shadow 140ms ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 .primary {
@@ -25,17 +26,22 @@
 }
 
 .primary:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  background: #0071e3;
+  border-color: #0071e3;
+  box-shadow: 0 6px 16px rgba(0, 102, 204, 0.24);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .secondary {
-  background-color: #ffffff;
-  color: var(--text);
+  background-color: var(--surface);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .secondary:hover {
-  background-color: #f0f0f2;
+  background-color: var(--accent-soft);
+  border-color: #0071e3;
 }
