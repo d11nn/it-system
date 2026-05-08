@@ -5,6 +5,7 @@ import (
 
 	"github.com/Alonza0314/it-system/controller/backend/constant"
 	"github.com/Alonza0314/it-system/controller/backend/model"
+	loggergoModel "github.com/Alonza0314/logger-go/v2/model"
 )
 
 type ItContext struct {
@@ -14,13 +15,13 @@ type ItContext struct {
 	runnerContext  *runnerContext
 }
 
-func NewItContext(dbPath, logPath string, maxHistoryLength int, runnerCheckTimeInterval time.Duration) *ItContext {
+func NewItContext(dbPath, logPath string, maxHistoryLength int, runnerCheckTimeInterval time.Duration, discordEnabled bool, discordWebhookURL string, dcrLog loggergoModel.LoggerInterface) *ItContext {
 	dbContext := newBboltDbContext(dbPath)
 
 	return &ItContext{
 		githubContext:  newGithubContext(),
 		bboltDbContext: dbContext,
-		taskContext:    newTaskContext(logPath, maxHistoryLength, dbContext),
+		taskContext:    newTaskContext(logPath, maxHistoryLength, dbContext, discordEnabled, discordWebhookURL, dcrLog),
 		runnerContext:  newRunnerContext(dbContext, runnerCheckTimeInterval),
 	}
 }

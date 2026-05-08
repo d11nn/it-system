@@ -25,6 +25,13 @@ type BackendIE struct {
 
 	DBPath  string `yaml:"dbPath" valid:"required"`
 	LogPath string `yaml:"logPath" valid:"required"`
+
+	Discord DiscordIE `yaml:"discord"`
+}
+
+type DiscordIE struct {
+	Enabled        bool   `yaml:"enabled"`
+	WebhookUrlPath string `yaml:"webhookUrlPath"`
 }
 
 type JWTIE struct {

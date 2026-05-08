@@ -10,6 +10,7 @@ const (
 	TNT_LOG  = "TNT"
 	GIT_LOG  = "GIT"
 	RUN_LOG  = "RUN"
+	DCR_LOG  = "DCR"
 )
 
 // user level

@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/Alonza0314/it-system/controller/backend/constant"
+	"github.com/Alonza0314/it-system/controller/backend/internal/notify"
+	loggergoModel "github.com/Alonza0314/logger-go/v2/model"
 )
 
 type taskIdGenerator struct {
@@ -281,9 +283,13 @@ type taskContext struct {
 	dbContext *bboltDbContext
 
 	logPath string
+
+	discordEnabled    bool
+	discordWebhookURL string
+	discordLogger     loggergoModel.LoggerInterface
 }
 
-func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext) *taskContext {
+func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext, discordEnabled bool, discordWebhookURL string, discordLogger loggergoModel.LoggerInterface) *taskContext {
 	tCtx := &taskContext{
 		pendingQueue: newTaskQueue(),
 		ongoingQueue: newTaskQueue(),
@@ -300,6 +306,10 @@ func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext)
 		dbContext: dbCtx,
 
 		logPath: logPath,
+
+		discordEnabled:    discordEnabled,
+		discordWebhookURL: discordWebhookURL,
+		discordLogger:     discordLogger,
 	}
 
 	if err := os.MkdirAll(logPath, 0755); err != nil {
@@ -483,6 +493,21 @@ func (ctx *taskContext) moveOngoingTaskToHistory(id uint64) error {
 	sort.Slice(ctx.historyQueue, func(i, j int) bool {
 		return ctx.historyQueue[i].id < ctx.historyQueue[j].id
 	})
+
+	if ctx.discordEnabled && ctx.discordWebhookURL != "" {
+		pipelines := make([]notify.PipelineResult, len(task.pipelines))
+		for i, p := range task.pipelines {
+			pipelines[i] = notify.PipelineResult{Name: p.name, Status: p.status}
+		}
+		go func(taskID uint64, username, status string) {
+			if err := notify.SendTaskNotification(ctx.discordWebhookURL, taskID, username, status, pipelines); err != nil {
+				if ctx.discordLogger != nil {
+					ctx.discordLogger.Errorf("failed to send discord notification for task %d: %v", taskID, err)
+				}
+				ctx.discordLogger.Debugf("send discord notification for task: %d", taskID)
+			}
+		}(task.id, task.username, task.status)
+	}
 
 	return nil
 }

@@ -39,7 +39,16 @@ func controllerFunc(cmd *cobra.Command, args []string) {
 
 	logger := logger.NewBackendLogger(loggergoUtil.LogLevelString(controllerConfig.Logger.Level), "", true)
 
-	controller := internal.NewBackend(&controllerConfig, logger)
+	var discordWebhookURL string
+	if controllerConfig.Backend.Discord.Enabled {
+		if url, err := os.ReadFile(controllerConfig.Backend.Discord.WebhookUrlPath); err == nil {
+			discordWebhookURL = string(url)
+		} else {
+			panic(err)
+		}
+	}
+
+	controller := internal.NewBackend(&controllerConfig, discordWebhookURL, logger)
 	if controller == nil {
 		panic("failed to initialize the backend")
 	}
