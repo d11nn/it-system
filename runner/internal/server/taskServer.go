@@ -201,6 +201,27 @@ func (s *taskServer) handlePrepeareRepo(id uint64, repoDir, currentTimeStamp str
 		} else {
 			output += "\n" + fetchOutput
 		}
+
+		if checkoutOutput, err := s.runCmd(
+			ctx,
+			repoDir,
+			"git",
+			"checkout",
+			fmt.Sprintf("pr-%d", prNum),
+		); err != nil {
+			if ctx.Err() != nil {
+				s.TaskLog.Errorf("Checkout free5GC PR timed out for task ID: %d, error: %v", id, ctx.Err())
+				s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, output+"\n"+checkoutOutput))
+				return false
+			}
+			s.TaskLog.Errorf("Failed to checkout free5GC PR for task ID: %d, error: %v", id, err)
+			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, output+"\n"+checkoutOutput))
+			return false
+		} else {
+			output += "\n" + checkoutOutput
+		}
+
+		s.TaskLog.Infof("free5GC PR fetched and checked out successfully for task ID: %d", id)
 	}
 
 	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_PREPARE_FREE5GC, true, output))
