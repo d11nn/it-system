@@ -1,19 +1,19 @@
-# DeleteTenantsRequest
+# DeleteTenantsRequestTenantsInner
 
 
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**tenants** | [**Array&lt;DeleteTenantsRequestTenantsInner&gt;**](DeleteTenantsRequestTenantsInner.md) |  | [default to undefined]
+**username** | **string** |  | [default to undefined]
 
 ## Example
 
 ```typescript
-import { DeleteTenantsRequest } from './api';
+import { DeleteTenantsRequestTenantsInner } from './api';
 
-const instance: DeleteTenantsRequest = {
-    tenants,
+const instance: DeleteTenantsRequestTenantsInner = {
+    username,
 };
 ```
 
