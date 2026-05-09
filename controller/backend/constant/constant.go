@@ -24,6 +24,7 @@ const (
 // github
 const (
 	GITHUB_FREE5GC_BASE_API_URL = "https://api.github.com/repos/free5gc/%s/pulls"
+	FREE5GC                     = "free5gc"
 	AMF                         = "amf"
 	AUSF                        = "ausf"
 	BSF                         = "bsf"
@@ -41,7 +42,7 @@ const (
 	GO_UPF                      = "go-upf"
 )
 
-var NF_LIST = []string{AMF, AUSF, BSF, CHF, N3IWF, NEF, NRF, NSSF, PCF, SMF, TNGF, UDM, UDR, UPF}
+var NF_LIST = []string{FREE5GC, AMF, AUSF, BSF, CHF, N3IWF, NEF, NRF, NSSF, PCF, SMF, TNGF, UDM, UDR, UPF}
 
 // db
 const (

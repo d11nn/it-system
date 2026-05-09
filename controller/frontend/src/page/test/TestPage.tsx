@@ -22,6 +22,7 @@ interface NfDef {
 }
 
 const NF_ORDER: NfDef[] = [
+  { label: 'free5GC', apiName: 'free5gc' },
   { label: 'AMF', apiName: 'amf' },
   { label: 'AUSF', apiName: 'ausf' },
   { label: 'BSF', apiName: 'bsf' },
