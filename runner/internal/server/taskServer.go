@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -93,7 +94,7 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 
 	repoDir := filepath.Join(s.workspacePath, currentTimeStamp)
 
-	if !s.handlePrepeareRepo(task.Id, repoDir, currentTimeStamp) {
+	if !s.handlePrepeareRepo(task.Id, repoDir, currentTimeStamp, slices.ContainsFunc(task.NFPrList, func(nfPr model.NfPr) bool { return nfPr.NfName == cconstant.FREE5GC }), task.NFPrList) {
 		return
 	}
 
@@ -106,7 +107,7 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 	}
 
 	for _, test := range task.Tests {
-		if test == cconstant.TESTCASE_PREPARE_FREE5GC || test == cconstant.TESTCASE_FETCH_PRS || test == cconstant.TESTCASE_MAKE_NF || test == cconstant.TESTCASE_CLEANUP {
+		if test == cconstant.TESTCASE_PREPARE_FREE5GC || test == cconstant.TESTCASE_FETCH_PRS || test == cconstant.TESTCASE_MAKE_NF || test == cconstant.TESTCASE_CLEANUP || test == cconstant.FREE5GC {
 			continue
 		}
 
@@ -152,7 +153,7 @@ func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string
 	return string(output), nil
 }
 
-func (s *taskServer) handlePrepeareRepo(id uint64, repoDir, currentTimeStamp string) bool {
+func (s *taskServer) handlePrepeareRepo(id uint64, repoDir, currentTimeStamp string, fetchFree5gcPr bool, nfPrs []model.NfPr) bool {
 	output, err := s.prepareRepo(repoDir, currentTimeStamp)
 	if err != nil {
 		s.TaskLog.Errorf("Failed to prepare repository for task ID: %d, error: %v", id, err)
@@ -161,6 +162,46 @@ func (s *taskServer) handlePrepeareRepo(id uint64, repoDir, currentTimeStamp str
 		return false
 	}
 	s.TaskLog.Infof("Repository prepared successfully for task ID: %d", id)
+
+	if fetchFree5gcPr {
+		s.TaskLog.Infof("Fetching free5GC PR for task ID: %d", id)
+
+		prNum := 0
+		for _, nfPr := range nfPrs {
+			if nfPr.NfName == cconstant.FREE5GC {
+				prNum = nfPr.PR
+				break
+			}
+		}
+		if prNum == 0 {
+			s.TaskLog.Warnf("No PR number found for free5GC in task ID: %d, skipping fetch", id)
+			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_PREPARE_FREE5GC, true, output+"\nNo PR number for free5GC, skipping fetch"))
+			return true
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), constant.FETCH_CMD_TIMEOUT)
+		defer cancel()
+
+		if fetchOutput, err := s.runCmd(
+			ctx,
+			repoDir,
+			"git",
+			"fetch",
+			"origin",
+			fmt.Sprintf("pull/%d/head:pr-%d", prNum, prNum),
+		); err != nil {
+			if ctx.Err() != nil {
+				s.TaskLog.Errorf("Fetch free5GC PR timed out for task ID: %d, error: %v", id, ctx.Err())
+				s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, output+"\n"+fetchOutput))
+				return false
+			}
+			s.TaskLog.Errorf("Failed to fetch free5GC PR for task ID: %d, error: %v", id, err)
+			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, output+"\n"+fetchOutput))
+			return false
+		} else {
+			output += "\n" + fetchOutput
+		}
+	}
 
 	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_PREPARE_FREE5GC, true, output))
 
@@ -279,6 +320,10 @@ func (s *taskServer) fetchNfPr(nfPrs []model.NfPr, repoDir string) (string, erro
 	var output string
 
 	for _, nfPr := range nfPrs {
+		if nfPr.NfName == cconstant.FREE5GC {
+			continue
+		}
+
 		s.TaskLog.Debugf("Fetching NF-PR for NF: %s, PR: %d", nfPr.NfName, nfPr.PR)
 
 		ctx, cancel := context.WithTimeout(context.Background(), constant.FETCH_CMD_TIMEOUT)
