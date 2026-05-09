@@ -506,7 +506,7 @@ func (ctx *taskContext) moveOngoingTaskToHistory(id uint64) error {
 				userDiscordId = []byte(username)
 			}
 
-			if err := notify.SendTaskNotification(ctx.discordWebhookURL, taskID, string(userDiscordId), status, pipelines); err != nil {
+			if err := notify.SendTaskNotification(ctx.discordWebhookURL, taskID, username, string(userDiscordId), status, pipelines); err != nil {
 				if ctx.discordLogger != nil {
 					ctx.discordLogger.Errorf("failed to send discord notification for task %d: %v", taskID, err)
 				}
