@@ -578,6 +578,9 @@ func (ctx *taskContext) writeLogToFile(id uint64, testName string, success bool,
 }
 
 func normalizePipelineStatus(success bool, status string) string {
+	// Prefer the explicit status when it is one of the known values. This lets
+	// the runner report timeout separately from failed, without trusting unknown
+	// request strings and storing invalid pipeline states.
 	switch strings.ToLower(status) {
 	case constant.TASK_STATUS_SUCCESS:
 		return constant.TASK_STATUS_SUCCESS
@@ -587,6 +590,8 @@ func normalizePipelineStatus(success bool, status string) string {
 		return constant.TASK_STATUS_TIMEOUT
 	}
 
+	// Fall back to the legacy success flag for older runners or requests that do
+	// not provide a valid status field.
 	if success {
 		return constant.TASK_STATUS_SUCCESS
 	}
