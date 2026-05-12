@@ -1,12 +1,15 @@
 package context
 
 import (
+	cctx "context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/Alonza0314/it-system/controller/backend/constant"
 	"github.com/Alonza0314/it-system/controller/backend/internal/notify"
@@ -91,6 +94,8 @@ type task struct {
 	username   string
 	status     string
 	createTime int64
+	startTime  int64
+	updateTime int64
 	pipelines  []pipeline
 	nfPrList   []nfPr
 }
@@ -152,6 +157,8 @@ func (t *task) copy() task {
 		username:   t.username,
 		status:     t.status,
 		createTime: t.createTime,
+		startTime:  t.startTime,
+		updateTime: t.updateTime,
 		pipelines:  pipelineCopy,
 		nfPrList:   nfPrListCopy,
 	}
@@ -183,6 +190,8 @@ func (t *task) toDto() TaskDto {
 		Username:   t.username,
 		Status:     t.status,
 		CreateTime: t.createTime,
+		StartTime:  t.startTime,
+		UpdateTime: t.updateTime,
 		Pipelines:  pipelines,
 		NfPrList:   nfPrList,
 	}
@@ -193,6 +202,8 @@ func (t *task) revertDto(dto TaskDto) {
 	t.username = dto.Username
 	t.status = dto.Status
 	t.createTime = dto.CreateTime
+	t.startTime = dto.StartTime
+	t.updateTime = dto.UpdateTime
 	t.pipelines = make([]pipeline, len(dto.Pipelines))
 	for i, p := range dto.Pipelines {
 		t.pipelines[i] = pipeline{
@@ -226,6 +237,8 @@ func (q *taskQueue) copy() []task {
 			username:   t.username,
 			status:     t.status,
 			createTime: t.createTime,
+			startTime:  t.startTime,
+			updateTime: t.updateTime,
 			pipelines:  pipeline,
 		}
 	}
@@ -287,9 +300,14 @@ type taskContext struct {
 	discordEnabled    bool
 	discordWebhookURL string
 	discordLogger     loggergoModel.LoggerInterface
+
+	watchdogCtx    cctx.Context
+	watchdogCancel cctx.CancelFunc
 }
 
 func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext, discordEnabled bool, discordWebhookURL string, discordLogger loggergoModel.LoggerInterface) *taskContext {
+	watchdogCtx, watchdogCancel := cctx.WithCancel(cctx.Background())
+
 	tCtx := &taskContext{
 		pendingQueue: newTaskQueue(),
 		ongoingQueue: newTaskQueue(),
@@ -310,6 +328,9 @@ func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext,
 		discordEnabled:    discordEnabled,
 		discordWebhookURL: discordWebhookURL,
 		discordLogger:     discordLogger,
+
+		watchdogCtx:    watchdogCtx,
+		watchdogCancel: watchdogCancel,
 	}
 
 	if err := os.MkdirAll(logPath, 0755); err != nil {
@@ -335,10 +356,16 @@ func newTaskContext(logPath string, maxHistoryLength int, dbCtx *bboltDbContext,
 		return tCtx.historyQueue[i].id < tCtx.historyQueue[j].id
 	})
 
+	tCtx.watchOngoingTasks(constant.TASK_WATCHDOG_INTERVAL, constant.TASK_OUTPUT_TIMEOUT)
+
 	return tCtx
 }
 
 func releaseTaskContext(ctx *taskContext) error {
+	if ctx.watchdogCancel != nil {
+		ctx.watchdogCancel()
+	}
+
 	ctx.historyQueueLock.Lock()
 	defer ctx.historyQueueLock.Unlock()
 
@@ -440,6 +467,9 @@ func (ctx *taskContext) getFirstPendingTaskAndMoveToOngoing() (*task, error) {
 	}
 
 	task.status = constant.TASK_STATUS_RUNNING
+	now := time.Now().Unix()
+	task.startTime = now
+	task.updateTime = now
 
 	ctx.ongoingQueueLock.Lock()
 	defer ctx.ongoingQueueLock.Unlock()
@@ -447,6 +477,55 @@ func (ctx *taskContext) getFirstPendingTaskAndMoveToOngoing() (*task, error) {
 	ctx.ongoingQueue.Push(task)
 
 	return task, nil
+}
+
+func (ctx *taskContext) watchOngoingTasks(interval, timeout time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.watchdogCtx.Done():
+				return
+			case <-ticker.C:
+				ctx.timeoutStaleOngoingTasks(timeout)
+			}
+		}
+	}()
+}
+
+func (ctx *taskContext) timeoutStaleOngoingTasks(timeout time.Duration) {
+	now := time.Now().Unix()
+	timeoutSeconds := int64(timeout.Seconds())
+
+	var timedOutTasks []*task
+	ctx.ongoingQueueLock.Lock()
+	for i := 0; i < len(ctx.ongoingQueue); {
+		t := ctx.ongoingQueue[i]
+		if t.updateTime > 0 && now-t.updateTime > timeoutSeconds {
+			t.markFirstUnfinishedPipelineTimeout()
+			t.status = constant.TASK_STATUS_TIMEOUT
+			ctx.ongoingQueue = append(ctx.ongoingQueue[:i], ctx.ongoingQueue[i+1:]...)
+			timedOutTasks = append(timedOutTasks, t)
+			continue
+		}
+		i++
+	}
+	ctx.ongoingQueueLock.Unlock()
+
+	for _, t := range timedOutTasks {
+		_ = ctx.pushHistory(t)
+	}
+}
+
+func (t *task) markFirstUnfinishedPipelineTimeout() {
+	for i, p := range t.pipelines {
+		if p.status == constant.TASK_STATUS_PENDING || p.status == constant.TASK_STATUS_RUNNING {
+			t.pipelines[i].status = constant.TASK_STATUS_TIMEOUT
+			return
+		}
+	}
 }
 
 func (ctx *taskContext) cancelTask(id uint64) error {
@@ -468,15 +547,31 @@ func (ctx *taskContext) moveOngoingTaskToHistory(id uint64) error {
 	defer ctx.ongoingQueueLock.Unlock()
 
 	ctx.ongoingQueue.RemoveById(id)
-	task.status = constant.TASK_STATUS_SUCCESS
+	task.setFinalStatus()
 
-	for _, t := range task.pipelines {
-		if t.status != constant.TASK_STATUS_SUCCESS {
-			task.status = constant.TASK_STATUS_FAILED
-			break
+	return ctx.pushHistory(task)
+}
+
+func (t *task) setFinalStatus() {
+	t.status = constant.TASK_STATUS_SUCCESS
+
+	for _, p := range t.pipelines {
+		if p.status == constant.TASK_STATUS_FAILED {
+			t.status = constant.TASK_STATUS_FAILED
+			return
+		}
+		if p.status == constant.TASK_STATUS_TIMEOUT {
+			t.status = constant.TASK_STATUS_TIMEOUT
+			continue
+		}
+		if p.status != constant.TASK_STATUS_SUCCESS {
+			t.status = constant.TASK_STATUS_FAILED
+			return
 		}
 	}
+}
 
+func (ctx *taskContext) pushHistory(task *task) error {
 	ctx.historyQueueLock.Lock()
 	defer ctx.historyQueueLock.Unlock()
 
@@ -518,19 +613,17 @@ func (ctx *taskContext) moveOngoingTaskToHistory(id uint64) error {
 	return nil
 }
 
-func (ctx *taskContext) writeLogToFile(id uint64, testName string, success bool, log *string) error {
+func (ctx *taskContext) writeLogToFile(id uint64, testName string, success bool, status string, log *string) error {
 	ctx.ongoingQueueLock.Lock()
 	defer ctx.ongoingQueueLock.Unlock()
 
 	task := ctx.ongoingQueue.FindById(id)
 	if task != nil {
+		pipelineStatus := normalizePipelineStatus(success, status)
+		task.updateTime = time.Now().Unix()
 		for i, t := range task.pipelines {
 			if t.name == testName {
-				if success {
-					task.pipelines[i].status = constant.TASK_STATUS_SUCCESS
-				} else {
-					task.pipelines[i].status = constant.TASK_STATUS_FAILED
-				}
+				task.pipelines[i].status = pipelineStatus
 				break
 			}
 		}
@@ -561,6 +654,22 @@ func (ctx *taskContext) writeLogToFile(id uint64, testName string, success bool,
 	}
 
 	return nil
+}
+
+func normalizePipelineStatus(success bool, status string) string {
+	switch strings.ToLower(status) {
+	case constant.TASK_STATUS_SUCCESS:
+		return constant.TASK_STATUS_SUCCESS
+	case constant.TASK_STATUS_FAILED:
+		return constant.TASK_STATUS_FAILED
+	case constant.TASK_STATUS_TIMEOUT:
+		return constant.TASK_STATUS_TIMEOUT
+	}
+
+	if success {
+		return constant.TASK_STATUS_SUCCESS
+	}
+	return constant.TASK_STATUS_FAILED
 }
 
 func (ctx *taskContext) deleteHistory() error {

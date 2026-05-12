@@ -28,17 +28,25 @@ type allowedMentions struct {
 }
 
 func statusEmoji(status string) string {
-	if status == "success" {
+	switch status {
+	case constant.TASK_STATUS_SUCCESS:
 		return "✅"
+	case constant.TASK_STATUS_TIMEOUT:
+		return "❗"
+	default:
+		return "❌"
 	}
-	return "❌"
 }
 
 func statusText(status string) string {
-	if status == "success" {
+	switch status {
+	case constant.TASK_STATUS_SUCCESS:
 		return "Success"
+	case constant.TASK_STATUS_TIMEOUT:
+		return "Timeout"
+	default:
+		return "Failed"
 	}
-	return "Failed"
 }
 
 func reorderPipelinesForDisplay(pipelines []PipelineResult) []PipelineResult {
@@ -91,7 +99,7 @@ func SendTaskNotification(webhookURL string, taskID uint64, username, userDiscor
 	emoji := statusEmoji(status)
 	statusUpper := strings.ToUpper(status)
 
-	threadName := fmt.Sprintf("Task #%d · %s · %s %s", taskID, username, emoji, statusUpper)
+	threadName := fmt.Sprintf("Task #%d - %s - %s %s", taskID, username, emoji, statusUpper)
 	trimmedUsername := strings.TrimSpace(userDiscordId)
 	content := fmt.Sprintf("@%s Task Finished!", trimmedUsername)
 	var mentions *allowedMentions
