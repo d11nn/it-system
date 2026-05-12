@@ -109,12 +109,27 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 		return
 	}
 
+	retryTests := make([]string, 0)
 	for _, test := range task.Tests {
 		if test == cconstant.TESTCASE_PREPARE_FREE5GC || test == cconstant.TESTCASE_FETCH_PRS || test == cconstant.TESTCASE_MAKE_NF || test == cconstant.TESTCASE_CLEANUP || test == cconstant.FREE5GC {
 			continue
 		}
 
 		s.TaskLog.Infof("Running test: %s for task ID: %d", test, task.Id)
+
+		status := s.handleRunTest(task.Id, test, repoDir)
+		if isRetryableTestStatus(status) {
+			retryTests = append(retryTests, test)
+		}
+		if status == cconstant.TASK_STATUS_TIMEOUT {
+			if !s.handleSilentCleanup(task.Id, test, repoDir) {
+				return
+			}
+		}
+	}
+
+	for _, test := range retryTests {
+		s.TaskLog.Infof("Retrying test once: %s for task ID: %d", test, task.Id)
 
 		status := s.handleRunTest(task.Id, test, repoDir)
 		if status == cconstant.TASK_STATUS_TIMEOUT {
@@ -147,6 +162,10 @@ func (s *taskServer) isTestSuccess(output string) bool {
 	cleanedOutput := s.normalizeOutput(output)
 
 	return !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_1) && !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_2) && !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_3)
+}
+
+func isRetryableTestStatus(status string) bool {
+	return status == cconstant.TASK_STATUS_FAILED || status == cconstant.TASK_STATUS_TIMEOUT
 }
 
 func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string) (string, error) {
