@@ -96,7 +96,7 @@
 }
 
 .formPanelOpen {
-  max-height: 1100px;
+  max-height: 10000px;
   opacity: 1;
   transform: translateY(0);
 }
@@ -107,6 +107,8 @@
   background: #ffffff;
   padding: 1.2rem;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.05);
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
 }
 
 .formGrid {
@@ -117,7 +119,11 @@
 .submitRow {
   display: flex;
   justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
   margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  background: linear-gradient(to top, #ffffff 72%, rgba(255, 255, 255, 0));
 }
 
 .submitButton {
@@ -165,6 +171,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+  max-height: min(42vh, 420px);
+  overflow-y: auto;
+  align-content: flex-start;
+  padding-right: 0.2rem;
 }
 
 .testcaseOption {
