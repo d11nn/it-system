@@ -16,6 +16,11 @@ type PipelineResult struct {
 	Status string
 }
 
+type NfPrResult struct {
+	NfName string
+	PR     int
+}
+
 type discordPayload struct {
 	ThreadName      string           `json:"thread_name"`
 	Content         string           `json:"content"`
@@ -93,13 +98,61 @@ func reorderPipelinesForDisplay(pipelines []PipelineResult) []PipelineResult {
 	return ordered
 }
 
+func formatNfPrDisplayName(nfPr NfPrResult) string {
+	nfName := strings.TrimSpace(nfPr.NfName)
+	if nfName == "" {
+		nfName = "unknown"
+	}
+
+	return fmt.Sprintf("%s #%d", nfName, nfPr.PR)
+}
+
+func formatNfPrSummary(nfPrList []NfPrResult) string {
+	if len(nfPrList) == 0 {
+		return "No PRs"
+	}
+
+	parts := make([]string, 0, len(nfPrList))
+	for _, nfPr := range nfPrList {
+		parts = append(parts, formatNfPrDisplayName(nfPr))
+	}
+
+	summary := strings.Join(parts, ", ")
+	if len(summary) <= constant.MAX_THREAD_PR_SUMMARY_LENGTH {
+		return summary
+	}
+
+	for count := len(parts) - 1; count > 0; count-- {
+		remaining := len(parts) - count
+		candidate := fmt.Sprintf("%s +%d more", strings.Join(parts[:count], ", "), remaining)
+		if len(candidate) <= constant.MAX_THREAD_PR_SUMMARY_LENGTH {
+			return candidate
+		}
+	}
+
+	return fmt.Sprintf("%d PRs", len(parts))
+}
+
+func formatNfPrDetails(nfPrList []NfPrResult) string {
+	if len(nfPrList) == 0 {
+		return "- (No PRs)"
+	}
+
+	lines := make([]string, 0, len(nfPrList))
+	for _, nfPr := range nfPrList {
+		lines = append(lines, fmt.Sprintf("- %s", formatNfPrDisplayName(nfPr)))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 // SendTaskNotification posts a new thread to a Discord Forum channel via Webhook.
 // userDiscordId is expected to be the Discord user ID (snowflake) for @mention to work.
-func SendTaskNotification(webhookURL string, taskID uint64, username, userDiscordId, status string, pipelines []PipelineResult) error {
+func SendTaskNotification(webhookURL string, taskID uint64, username, userDiscordId, status string, pipelines []PipelineResult, nfPrList []NfPrResult) error {
 	emoji := statusEmoji(status)
 	statusUpper := strings.ToUpper(status)
 
-	threadName := fmt.Sprintf("Task #%d · %s · %s %s", taskID, username, emoji, statusUpper)
+	threadName := fmt.Sprintf("Task #%d · %s · %s · %s %s", taskID, formatNfPrSummary(nfPrList), username, emoji, statusUpper)
 	trimmedUsername := strings.TrimSpace(userDiscordId)
 	content := fmt.Sprintf("@%s Task Finished!", trimmedUsername)
 	var mentions *allowedMentions
@@ -120,9 +173,10 @@ func SendTaskNotification(webhookURL string, taskID uint64, username, userDiscor
 	}
 
 	content = fmt.Sprintf(
-		"%s\n\nTask #%d is done.\nResult: %s %s\n\nPipeline:\n%s",
+		"%s\n\nTask #%d is done.\nFetched PRs:\n%s\n\nResult: %s %s\n\nPipeline:\n%s",
 		content,
 		taskID,
+		formatNfPrDetails(nfPrList),
 		emoji,
 		statusText(status),
 		details,
