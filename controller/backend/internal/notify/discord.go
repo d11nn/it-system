@@ -99,7 +99,7 @@ func SendTaskNotification(webhookURL string, taskID uint64, username, userDiscor
 	emoji := statusEmoji(status)
 	statusUpper := strings.ToUpper(status)
 
-	threadName := fmt.Sprintf("Task #%d - %s - %s %s", taskID, username, emoji, statusUpper)
+	threadName := fmt.Sprintf("Task #%d · %s · %s %s", taskID, username, emoji, statusUpper)
 	trimmedUsername := strings.TrimSpace(userDiscordId)
 	content := fmt.Sprintf("@%s Task Finished!", trimmedUsername)
 	var mentions *allowedMentions
