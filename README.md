@@ -73,8 +73,8 @@ A free5GC developer friendly integration test system.
 These two commands will help you get the latest release deb and install on your host as a system service:
 
 ```bash
-wget https://github.com/Alonza0314/it-system/releases/download/v0.0.10/it-system-controller_0.0.10_amd64.deb
-sudo dpkg -i it-system-controller_0.0.10_amd64.deb
+wget https://github.com/Alonza0314/it-system/releases/download/v0.0.11/it-system-controller_0.0.11_amd64.deb
+sudo dpkg -i it-system-controller_0.0.11_amd64.deb
 ```
 
 ### Runner
@@ -114,8 +114,8 @@ sudo systemctl enable --now mongod
 These two commands will help you get the latest release deb and install on your host as a system service:
 
 ```bash
-wget https://github.com/Alonza0314/it-system/releases/download/v0.0.10/it-system-runner_0.0.10_amd64.deb
-sudo dpkg -i it-system-runner_0.0.10_amd64.deb
+wget https://github.com/Alonza0314/it-system/releases/download/v0.0.11/it-system-runner_0.0.11_amd64.deb
+sudo dpkg -i it-system-runner_0.0.11_amd64.deb
 ```
 
 ### Trouble Shooting
@@ -131,3 +131,7 @@ Then re-install with `dpkg -i`.
 ## Remove
 
 Please refer to: [controller](./deb/controller.md) / [runner](./deb/runenr.md).
+
+## TODO
+
+- test in free5gc repo should tidy after fetch nf prs
