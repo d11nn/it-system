@@ -172,10 +172,10 @@ func (t *task) toDto() TaskDto {
 	}
 
 	nfPrList := make([]NfPrDto, len(t.nfPrList))
-	for i, np := range t.nfPrList {
+	for i, nfPr := range t.nfPrList {
 		nfPrList[i] = NfPrDto{
-			NfName: np.nfName,
-			Pr:     np.pr,
+			NfName: nfPr.nfName,
+			Pr:     nfPr.pr,
 		}
 	}
 
@@ -202,10 +202,10 @@ func (t *task) revertDto(dto TaskDto) {
 		}
 	}
 	t.nfPrList = make([]nfPr, len(dto.NfPrList))
-	for i, np := range dto.NfPrList {
+	for i, nfPrDto := range dto.NfPrList {
 		t.nfPrList[i] = nfPr{
-			nfName: np.NfName,
-			pr:     np.Pr,
+			nfName: nfPrDto.NfName,
+			pr:     nfPrDto.Pr,
 		}
 	}
 }
@@ -516,6 +516,10 @@ func (ctx *taskContext) pushHistory(task *task) error {
 		for i, p := range task.pipelines {
 			pipelines[i] = notify.PipelineResult{Name: p.name, Status: p.status}
 		}
+		nfPrList := make([]notify.NfPrResult, len(task.nfPrList))
+		for i, nfPr := range task.nfPrList {
+			nfPrList[i] = notify.NfPrResult{NfName: nfPr.nfName, PR: nfPr.pr}
+		}
 		go func(taskID uint64, username, status string) {
 			userDiscordId, err := ctx.dbContext.Load([]byte(constant.BUCKET_DISCORD_ID), []byte(username))
 			if err != nil {
@@ -523,7 +527,7 @@ func (ctx *taskContext) pushHistory(task *task) error {
 				userDiscordId = []byte(username)
 			}
 
-			if err := notify.SendTaskNotification(ctx.discordWebhookURL, taskID, username, string(userDiscordId), status, pipelines); err != nil {
+			if err := notify.SendTaskNotification(ctx.discordWebhookURL, taskID, username, string(userDiscordId), status, pipelines, nfPrList); err != nil {
 				if ctx.discordLogger != nil {
 					ctx.discordLogger.Errorf("failed to send discord notification for task %d: %v", taskID, err)
 				}
