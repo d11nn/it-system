@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/Alonza0314/logger-go/v2 v2.0.5
-	github.com/free-ran-ue/util v0.0.3
+	github.com/free-ran-ue/util v0.0.4
 	github.com/gin-gonic/gin v1.12.0
 	github.com/spf13/cobra v1.10.2
 	go.etcd.io/bbolt v1.4.3
@@ -15,11 +15,11 @@ require (
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/free-ran-ue/free-ran-ue/v2 v2.3.11 // indirect
-	github.com/free5gc/aper v1.1.0 // indirect
-	github.com/free5gc/nas v1.2.2 // indirect
-	github.com/free5gc/ngap v1.1.2 // indirect
-	github.com/free5gc/openapi v1.2.3 // indirect
+	github.com/free-ran-ue/free-ran-ue/v2 v2.3.12 // indirect
+	github.com/free5gc/aper v1.1.1 // indirect
+	github.com/free5gc/nas v1.2.3 // indirect
+	github.com/free5gc/ngap v1.1.3 // indirect
+	github.com/free5gc/openapi v1.2.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
