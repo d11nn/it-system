@@ -73,7 +73,7 @@ A free5GC developer friendly integration test system.
 These two commands will help you get the latest release deb and install on your host as a system service:
 
 ```bash
-wget https://github.com/Alonza0314/it-system/releases/download/v0.0.13/it-system-controller_0.0.13_amd64.deb
+wget https://github.com/Alonza0314/it-system/releases/download/v0.1.0/it-system-controller_0.0.13_amd64.deb
 sudo dpkg -i it-system-controller_0.0.13_amd64.deb
 ```
 
@@ -114,7 +114,7 @@ sudo systemctl enable --now mongod
 These two commands will help you get the latest release deb and install on your host as a system service:
 
 ```bash
-wget https://github.com/Alonza0314/it-system/releases/download/v0.0.13/it-system-runner_0.0.13_amd64.deb
+wget https://github.com/Alonza0314/it-system/releases/download/v0.1.0/it-system-runner_0.0.13_amd64.deb
 sudo dpkg -i it-system-runner_0.0.13_amd64.deb
 ```
 
