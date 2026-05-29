@@ -141,7 +141,7 @@ func isLikelyLibraryDependencyPR(nfAuthor, candidateAuthor, nfTitle, nfText, can
 
 func significantWords(text string) []string {
 	fields := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9')
+		return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'))
 	})
 
 	words := make([]string, 0, len(fields))
