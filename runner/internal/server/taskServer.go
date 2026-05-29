@@ -3,8 +3,10 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,6 +88,7 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 	s.TaskLog.Infof("Received task from controller, task ID: %d", task.Id)
 	s.TaskLog.Tracef("Task tests: %v", task.Tests)
 	s.TaskLog.Tracef("Task NF-PR list: %v", task.NFPrList)
+	s.TaskLog.Tracef("Task library PR list: %v", task.LibraryPrList)
 
 	loc, err := time.LoadLocation("Asia/Taipei")
 	if err != nil {
@@ -103,6 +106,10 @@ func (s *taskServer) handleTask(task model.ResponseRunnerHeartbeat) {
 	}
 
 	if !s.handleFetchNfPr(task.Id, task.NFPrList, repoDir) {
+		return
+	}
+
+	if !s.handleLibraryPrs(task.Id, task.LibraryPrList, task.NFPrList, repoDir) {
 		return
 	}
 
@@ -167,7 +174,16 @@ func (s *taskServer) normalizeOutput(output string) string {
 func (s *taskServer) isTestSuccess(output string) bool {
 	cleanedOutput := s.normalizeOutput(output)
 
-	return !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_1) && !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_2) && !strings.Contains(cleanedOutput, constant.FAIL_MESSAGE_3)
+	return !isFailureOutput(cleanedOutput)
+}
+
+func isFailureOutput(output string) bool {
+	if strings.Contains(output, constant.FAIL_MESSAGE_1) || strings.Contains(output, constant.FAIL_MESSAGE_2) || strings.Contains(output, constant.FAIL_MESSAGE_3) {
+		return true
+	}
+
+	buildFailPattern := regexp.MustCompile(`(?m)^FAIL\s+\S+\s+\[build failed\]$`)
+	return buildFailPattern.MatchString(output)
 }
 
 func (s *taskServer) runCmd(ctx context.Context, dir, cmd string, args ...string) (string, error) {
@@ -256,28 +272,29 @@ func (s *taskServer) handlePrepeareRepo(id uint64, repoDir, currentTimeStamp str
 			output += "\n" + fetchOutput
 		}
 
-		if checkoutOutput, err := s.runCmd(
+		if mergeOutput, err := s.runCmd(
 			ctx,
 			repoDir,
 			"git",
-			"checkout",
+			"merge",
+			"--no-edit",
 			fmt.Sprintf("pr-%d", prNum),
 		); err != nil {
 			if ctx.Err() != nil {
-				s.TaskLog.Errorf("Checkout free5GC PR timed out for task ID: %d, error: %v", id, ctx.Err())
-				s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, cconstant.TASK_STATUS_TIMEOUT, output+"\n"+checkoutOutput))
+				s.TaskLog.Errorf("Merge free5GC PR timed out for task ID: %d, error: %v", id, ctx.Err())
+				s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, cconstant.TASK_STATUS_TIMEOUT, output+"\n"+mergeOutput))
 
 				return false
 			}
-			s.TaskLog.Errorf("Failed to checkout free5GC PR for task ID: %d, error: %v", id, err)
-			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, cconstant.TASK_STATUS_FAILED, output+"\n"+checkoutOutput))
+			s.TaskLog.Errorf("Failed to merge free5GC PR for task ID: %d, error: %v", id, err)
+			s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_PREPARE_FREE5GC, false, cconstant.TASK_STATUS_FAILED, output+"\n"+mergeOutput))
 
 			return false
 		} else {
-			output += "\n" + checkoutOutput
+			output += "\n" + mergeOutput
 		}
 
-		s.TaskLog.Infof("free5GC PR fetched and checked out successfully for task ID: %d", id)
+		s.TaskLog.Infof("free5GC PR fetched and merged successfully for task ID: %d", id)
 	}
 
 	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_PREPARE_FREE5GC, true, cconstant.TASK_STATUS_SUCCESS, output))
@@ -295,6 +312,35 @@ func (s *taskServer) handleFetchNfPr(id uint64, nfPrs []model.NfPr, repoDir stri
 	}
 	s.TaskLog.Infof("NF-PRs fetched successfully for task ID: %d", id)
 
+	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_FETCH_PRS, true, cconstant.TASK_STATUS_SUCCESS, output))
+
+	return true
+}
+
+func (s *taskServer) handleLibraryPrs(id uint64, libraryPrs []model.LibraryPr, nfPrs []model.NfPr, repoDir string) bool {
+	if len(libraryPrs) == 0 {
+		if s.shouldTidyTestModule(nfPrs) {
+			output, err := s.tidyTestModule(repoDir)
+			if err != nil {
+				s.TaskLog.Errorf("Failed to tidy test module for task ID: %d, error: %v", id, err)
+				s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_FETCH_PRS, false, cconstant.TASK_STATUS_FAILED, "Running go mod tidy in test module\n"+output))
+
+				return false
+			}
+		}
+
+		return true
+	}
+
+	output, err := s.applyLibraryPrs(libraryPrs, repoDir)
+	if err != nil {
+		s.TaskLog.Errorf("Failed to apply library PRs for task ID: %d, error: %v", id, err)
+		s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(true, id, cconstant.TESTCASE_FETCH_PRS, false, cconstant.TASK_STATUS_FAILED, output))
+
+		return false
+	}
+
+	s.TaskLog.Infof("Library PRs applied successfully for task ID: %d", id)
 	s.msgChannel <- newHttpSenderMessage(constant.MSG_TYPE_TEST_OUTPUT, nil, s.buildRequestTestOutput(false, id, cconstant.TESTCASE_FETCH_PRS, true, cconstant.TASK_STATUS_SUCCESS, output))
 
 	return true
@@ -454,27 +500,20 @@ func (s *taskServer) fetchNfPr(nfPrs []model.NfPr, repoDir string) (string, erro
 			output += fetchOutput + "\n"
 		}
 
-		if checkoutOutput, err := s.runCmd(
+		if mergeOutput, err := s.runCmd(
 			ctx,
 			nfDir,
 			"git",
-			"checkout",
+			"merge",
+			"--no-edit",
 			fmt.Sprintf("pr-%d", nfPr.PR),
 		); err != nil {
 			if ctx.Err() != nil {
-				return output + checkoutOutput, fmt.Errorf("checkout NF-PR timed out for NF: %s, PR: %d, error: %v", nfPr.NfName, nfPr.PR, ctx.Err())
+				return output + mergeOutput, fmt.Errorf("merge NF-PR timed out for NF: %s, PR: %d, error: %v", nfPr.NfName, nfPr.PR, ctx.Err())
 			}
-			return output + checkoutOutput, fmt.Errorf("failed to checkout NF-PR for NF: %s, PR: %d, error: %v", nfPr.NfName, nfPr.PR, err)
+			return output + mergeOutput, fmt.Errorf("failed to merge NF-PR for NF: %s, PR: %d, error: %v", nfPr.NfName, nfPr.PR, err)
 		} else {
-			output += checkoutOutput + "\n"
-		}
-	}
-
-	if s.shouldTidyTestModule(nfPrs) {
-		tidyOutput, err := s.tidyTestModule(repoDir)
-		output += "Running go mod tidy in test module\n" + tidyOutput
-		if err != nil {
-			return output, err
+			output += mergeOutput + "\n"
 		}
 	}
 
@@ -510,6 +549,131 @@ func (s *taskServer) tidyTestModule(repoDir string) (string, error) {
 	}
 
 	return output, nil
+}
+
+func (s *taskServer) applyLibraryPrs(libraryPrs []model.LibraryPr, repoDir string) (string, error) {
+	moduleDirs, err := goModuleDirs(repoDir)
+	if err != nil {
+		return "", err
+	}
+
+	var output strings.Builder
+	for _, libraryPr := range libraryPrs {
+		if !slices.Contains(cconstant.LIBRARY_LIST, libraryPr.RepoName) {
+			return output.String(), fmt.Errorf("unsupported library repo: %s", libraryPr.RepoName)
+		}
+
+		head, err := fetchLibraryPrHead(libraryPr.RepoName, libraryPr.PR)
+		if err != nil {
+			return output.String(), err
+		}
+
+		replaceArg := buildLibraryReplaceArg(libraryPr.RepoName, head.RepoFullName, head.SHA)
+		output.WriteString(fmt.Sprintf("Applying library PR %s #%d with %s\n", libraryPr.RepoName, libraryPr.PR, replaceArg))
+		for _, moduleDir := range moduleDirs {
+			ctx, cancel := context.WithTimeout(context.Background(), constant.FETCH_CMD_TIMEOUT)
+			replaceOutput, err := s.runCmd(ctx, moduleDir, "go", "mod", "edit", replaceArg)
+			cancel()
+			output.WriteString(fmt.Sprintf("Running go mod edit in %s\n%s", moduleDir, replaceOutput))
+			if err != nil {
+				if ctx.Err() != nil {
+					return output.String(), fmt.Errorf("go mod edit timed out in %s for %s #%d: %v", moduleDir, libraryPr.RepoName, libraryPr.PR, ctx.Err())
+				}
+				return output.String(), fmt.Errorf("failed to apply replace in %s for %s #%d: %v", moduleDir, libraryPr.RepoName, libraryPr.PR, err)
+			}
+		}
+	}
+
+	for _, moduleDir := range moduleDirs {
+		ctx, cancel := context.WithTimeout(context.Background(), constant.TEST_CMD_TIMEOUT)
+		tidyOutput, err := s.runCmd(ctx, moduleDir, "go", "mod", "tidy")
+		cancel()
+		output.WriteString(fmt.Sprintf("Running go mod tidy in %s\n%s", moduleDir, tidyOutput))
+		if err != nil {
+			if ctx.Err() != nil {
+				return output.String(), fmt.Errorf("go mod tidy timed out in %s: %v", moduleDir, ctx.Err())
+			}
+			return output.String(), fmt.Errorf("failed to run go mod tidy in %s: %v", moduleDir, err)
+		}
+	}
+
+	return output.String(), nil
+}
+
+type libraryPrHead struct {
+	RepoFullName string
+	SHA          string
+}
+
+func fetchLibraryPrHead(repoName string, pr int) (*libraryPrHead, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/free5gc/%s/pulls/%d", repoName, pr)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "it-system-runner")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get %s PR #%d metadata: status code %d", repoName, pr, resp.StatusCode)
+	}
+
+	var payload struct {
+		Head struct {
+			SHA  string `json:"sha"`
+			Repo struct {
+				FullName string `json:"full_name"`
+			} `json:"repo"`
+		} `json:"head"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode %s PR #%d metadata: %v", repoName, pr, err)
+	}
+
+	if payload.Head.SHA == "" || payload.Head.Repo.FullName == "" {
+		return nil, fmt.Errorf("missing head metadata for %s PR #%d", repoName, pr)
+	}
+
+	return &libraryPrHead{
+		RepoFullName: payload.Head.Repo.FullName,
+		SHA:          payload.Head.SHA,
+	}, nil
+}
+
+func buildLibraryReplaceArg(repoName, headRepoFullName, headSHA string) string {
+	return fmt.Sprintf("-replace=github.com/free5gc/%s=github.com/%s@%s", repoName, headRepoFullName, headSHA)
+}
+
+func goModuleDirs(repoDir string) ([]string, error) {
+	moduleDirs := make([]string, 0)
+	if err := filepath.WalkDir(repoDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() != "go.mod" {
+			return nil
+		}
+
+		moduleDirs = append(moduleDirs, filepath.Dir(path))
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	slices.Sort(moduleDirs)
+	return moduleDirs, nil
 }
 
 func (s *taskServer) makeNf(repoDir string) (string, error) {

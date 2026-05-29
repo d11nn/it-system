@@ -44,6 +44,17 @@ const (
 
 var NF_LIST = []string{FREE5GC, AMF, AUSF, BSF, CHF, N3IWF, NEF, NRF, NSSF, PCF, SMF, TNGF, UDM, UDR, UPF}
 
+const (
+	LIBRARY_OPENAPI = "openapi"
+	LIBRARY_UTIL    = "util"
+	LIBRARY_NAS     = "nas"
+	LIBRARY_NGAP    = "ngap"
+	LIBRARY_PFCP    = "pfcp"
+	LIBRARY_APER    = "aper"
+)
+
+var LIBRARY_LIST = []string{LIBRARY_OPENAPI, LIBRARY_UTIL, LIBRARY_NAS, LIBRARY_NGAP, LIBRARY_PFCP, LIBRARY_APER}
+
 // db
 const (
 	BUCKET_TENANT     = "tenant"

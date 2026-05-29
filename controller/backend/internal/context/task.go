@@ -87,24 +87,39 @@ func (p *nfPr) PR() int {
 	return p.pr
 }
 
-type task struct {
-	id         uint64
-	username   string
-	status     string
-	createTime int64
-	pipelines  []pipeline
-	nfPrList   []nfPr
+type libraryPr struct {
+	repoName string
+	pr       int
 }
 
-func newTask(id uint64, username string, createTime int64, pipelines []pipeline, nfPrList []nfPr) *task {
+func (p *libraryPr) RepoName() string {
+	return p.repoName
+}
+
+func (p *libraryPr) PR() int {
+	return p.pr
+}
+
+type task struct {
+	id            uint64
+	username      string
+	status        string
+	createTime    int64
+	pipelines     []pipeline
+	nfPrList      []nfPr
+	libraryPrList []libraryPr
+}
+
+func newTask(id uint64, username string, createTime int64, pipelines []pipeline, nfPrList []nfPr, libraryPrList []libraryPr) *task {
 
 	return &task{
-		id:         id,
-		username:   username,
-		status:     constant.TASK_STATUS_PENDING,
-		createTime: createTime,
-		pipelines:  pipelines,
-		nfPrList:   nfPrList,
+		id:            id,
+		username:      username,
+		status:        constant.TASK_STATUS_PENDING,
+		createTime:    createTime,
+		pipelines:     pipelines,
+		nfPrList:      nfPrList,
+		libraryPrList: libraryPrList,
 	}
 }
 
@@ -141,6 +156,10 @@ func (t *task) NFPrList() []nfPr {
 	return t.nfPrList
 }
 
+func (t *task) LibraryPrList() []libraryPr {
+	return t.libraryPrList
+}
+
 func (t *task) copy() task {
 	pipelineCopy := make([]pipeline, len(t.pipelines))
 	copy(pipelineCopy, t.pipelines)
@@ -148,13 +167,17 @@ func (t *task) copy() task {
 	nfPrListCopy := make([]nfPr, len(t.nfPrList))
 	copy(nfPrListCopy, t.nfPrList)
 
+	libraryPrListCopy := make([]libraryPr, len(t.libraryPrList))
+	copy(libraryPrListCopy, t.libraryPrList)
+
 	return task{
-		id:         t.id,
-		username:   t.username,
-		status:     t.status,
-		createTime: t.createTime,
-		pipelines:  pipelineCopy,
-		nfPrList:   nfPrListCopy,
+		id:            t.id,
+		username:      t.username,
+		status:        t.status,
+		createTime:    t.createTime,
+		pipelines:     pipelineCopy,
+		nfPrList:      nfPrListCopy,
+		libraryPrList: libraryPrListCopy,
 	}
 }
 
@@ -179,13 +202,22 @@ func (t *task) toDto() TaskDto {
 		}
 	}
 
+	libraryPrList := make([]LibraryPrDto, len(t.libraryPrList))
+	for i, libraryPr := range t.libraryPrList {
+		libraryPrList[i] = LibraryPrDto{
+			RepoName: libraryPr.repoName,
+			Pr:       libraryPr.pr,
+		}
+	}
+
 	return TaskDto{
-		Id:         t.id,
-		Username:   t.username,
-		Status:     t.status,
-		CreateTime: t.createTime,
-		Pipelines:  pipelines,
-		NfPrList:   nfPrList,
+		Id:            t.id,
+		Username:      t.username,
+		Status:        t.status,
+		CreateTime:    t.createTime,
+		Pipelines:     pipelines,
+		NfPrList:      nfPrList,
+		LibraryPrList: libraryPrList,
 	}
 }
 
@@ -208,6 +240,13 @@ func (t *task) revertDto(dto TaskDto) {
 			pr:     nfPrDto.Pr,
 		}
 	}
+	t.libraryPrList = make([]libraryPr, len(dto.LibraryPrList))
+	for i, libraryPrDto := range dto.LibraryPrList {
+		t.libraryPrList[i] = libraryPr{
+			repoName: libraryPrDto.RepoName,
+			pr:       libraryPrDto.Pr,
+		}
+	}
 }
 
 type taskQueue []*task
@@ -221,13 +260,19 @@ func (q *taskQueue) copy() []task {
 	for i, t := range *q {
 		pipeline := make([]pipeline, len(t.pipelines))
 		copy(pipeline, t.pipelines)
+		nfPrList := make([]nfPr, len(t.nfPrList))
+		copy(nfPrList, t.nfPrList)
+		libraryPrList := make([]libraryPr, len(t.libraryPrList))
+		copy(libraryPrList, t.libraryPrList)
 
 		tasks[i] = task{
-			id:         t.id,
-			username:   t.username,
-			status:     t.status,
-			createTime: t.createTime,
-			pipelines:  pipeline,
+			id:            t.id,
+			username:      t.username,
+			status:        t.status,
+			createTime:    t.createTime,
+			pipelines:     pipeline,
+			nfPrList:      nfPrList,
+			libraryPrList: libraryPrList,
 		}
 	}
 
@@ -415,13 +460,13 @@ func (ctx *taskContext) getTaskById(id uint64) (*task, error) {
 	return nil, fmt.Errorf("task with id %d not found", id)
 }
 
-func (ctx *taskContext) createTask(username string, createTime int64, tests []pipeline, nfPrList []nfPr) error {
+func (ctx *taskContext) createTask(username string, createTime int64, tests []pipeline, nfPrList []nfPr, libraryPrList []libraryPr) error {
 	id, err := ctx.taskIdGenerator.assignId()
 	if err != nil {
 		return err
 	}
 
-	task := newTask(id, username, createTime, tests, nfPrList)
+	task := newTask(id, username, createTime, tests, nfPrList, libraryPrList)
 
 	ctx.pendingQueueLock.Lock()
 	defer ctx.pendingQueueLock.Unlock()

@@ -103,12 +103,20 @@ func (p *Processor) RunnerHeartbeat(req *model.RequestRunnerHeartbeat, runner st
 			PR:     np.PR(),
 		}
 	}
+	libraryPrList := make([]model.LibraryPr, len(task.LibraryPrList()))
+	for i, lp := range task.LibraryPrList() {
+		libraryPrList[i] = model.LibraryPr{
+			RepoName: lp.RepoName(),
+			PR:       lp.PR(),
+		}
+	}
 
 	return &model.ResponseRunnerHeartbeat{
-		Message:  "Runner heartbeat successful",
-		Id:       task.ID(),
-		Tests:    task.Tests(),
-		NFPrList: nfPrList,
+		Message:       "Runner heartbeat successful",
+		Id:            task.ID(),
+		Tests:         task.Tests(),
+		NFPrList:      nfPrList,
+		LibraryPrList: libraryPrList,
 	}, nil
 }
 

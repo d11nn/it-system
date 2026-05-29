@@ -20,6 +20,12 @@ func (b *backend) getGithubRoutes() util.Routes {
 			Pattern:     "",
 			HandlerFunc: b.handleGetGithubPRs,
 		},
+		{
+			Name:        "Suggest dependency PRs",
+			Method:      http.MethodPost,
+			Pattern:     "/dependency-suggestions",
+			HandlerFunc: b.handleDependencySuggestions,
+		},
 	}
 }
 
@@ -34,9 +40,9 @@ func (b *backend) handleGetGithubPRs(c *gin.Context) {
 		return
 	}
 
-	if exist := slices.Contains(constant.NF_LIST, nf); !exist {
+	if exist := slices.Contains(constant.NF_LIST, nf) || slices.Contains(constant.LIBRARY_LIST, nf); !exist {
 		c.JSON(http.StatusBadRequest, model.ResponseGetGithubPRs{
-			Message: "Invalid NF parameter, must be one of: " + strings.Join(constant.NF_LIST, ", "),
+			Message: "Invalid NF parameter, must be one of: " + strings.Join(append(constant.NF_LIST, constant.LIBRARY_LIST...), ", "),
 		})
 		return
 	}
@@ -54,5 +60,42 @@ func (b *backend) handleGetGithubPRs(c *gin.Context) {
 	}
 
 	b.GitLog.Infof("Get Github PRs successful for %s", c.ClientIP())
+	c.JSON(http.StatusOK, response)
+}
+
+func (b *backend) handleDependencySuggestions(c *gin.Context) {
+	b.GitLog.Infof("Dependency suggestions request from %s, user: %s", c.ClientIP(), c.GetHeader("user"))
+
+	var req model.RequestDependencySuggestions
+	if err := c.ShouldBindJSON(&req); err != nil {
+		b.GitLog.Warnf("Invalid dependency suggestions request from %s: %v", c.ClientIP(), err)
+		c.JSON(http.StatusBadRequest, model.ResponseDependencySuggestions{
+			Message: "Invalid request",
+		})
+		return
+	}
+
+	for _, nfPr := range req.NFPrList {
+		nf := nfPr.NfName
+		if nf == constant.GO_UPF {
+			nf = constant.UPF
+		}
+		if exist := slices.Contains(constant.NF_LIST, nf); !exist {
+			c.JSON(http.StatusBadRequest, model.ResponseDependencySuggestions{
+				Message: "Invalid NF parameter, must be one of: " + strings.Join(constant.NF_LIST, ", "),
+			})
+			return
+		}
+	}
+
+	response, errDetail := b.Processor.SuggestLibraryPRs(&req)
+	if errDetail != nil {
+		c.JSON(errDetail.HttpStatus, model.ResponseDependencySuggestions{
+			Message: errDetail.Detail,
+		})
+		return
+	}
+
+	b.GitLog.Infof("Dependency suggestions successful for %s", c.ClientIP())
 	c.JSON(http.StatusOK, response)
 }

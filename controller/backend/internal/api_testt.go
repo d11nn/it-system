@@ -2,8 +2,11 @@ package internal
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 
+	"github.com/Alonza0314/it-system/controller/backend/constant"
 	"github.com/Alonza0314/it-system/controller/backend/model"
 
 	"github.com/free-ran-ue/util"
@@ -199,6 +202,14 @@ func (b *backend) handleSubmitTask(c *gin.Context) {
 			Message: "Invalid request",
 		})
 		return
+	}
+	for _, libraryPr := range req.LibraryPrList {
+		if !slices.Contains(constant.LIBRARY_LIST, libraryPr.RepoName) {
+			c.JSON(http.StatusBadRequest, model.ResponseSubmitTask{
+				Message: "Invalid library PR repo, must be one of: " + strings.Join(constant.LIBRARY_LIST, ", "),
+			})
+			return
+		}
 	}
 
 	response, errDetail := b.Processor.SubmitTask(&req, c.GetHeader("user"))

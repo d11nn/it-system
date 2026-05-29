@@ -69,6 +69,17 @@ export interface NfPr {
     'nfName': string;
     'pr': number;
 }
+export interface LibraryPr {
+    'repoName': string;
+    'pr': number;
+}
+export interface LibraryPrSuggestion {
+    'repoName': string;
+    'pr': number;
+    'title'?: string;
+    'reason'?: string;
+    'confidence'?: string;
+}
 export interface PR {
     'number': number;
     'title': string;
@@ -83,6 +94,10 @@ export interface RequestRunnerHeartbeat {
 }
 export interface RequestSubmitTask {
     'tests': Array<string>;
+    'nfPrList': Array<NfPr>;
+    'libraryPrList'?: Array<LibraryPr>;
+}
+export interface RequestDependencySuggestions {
     'nfPrList': Array<NfPr>;
 }
 export interface RequestTestOutput {
@@ -101,6 +116,7 @@ export interface ResponseGetTask {
     'status'?: ResponseGetTaskStatusEnum;
     'tests'?: Array<TestDetail>;
     'nfPrList'?: Array<NfPr>;
+    'libraryPrList'?: Array<LibraryPr>;
 }
 
 export const ResponseGetTaskStatusEnum = {
@@ -133,6 +149,11 @@ export interface ResponseRunnerHeartbeat {
     'id'?: number;
     'tests'?: Array<string>;
     'nfPrList'?: Array<NfPr>;
+    'libraryPrList'?: Array<LibraryPr>;
+}
+export interface ResponseDependencySuggestions {
+    'message': string;
+    'suggestions'?: Array<LibraryPrSuggestion>;
 }
 export interface Runner {
     'name': string;
@@ -471,6 +492,45 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         *
+         * @summary Suggest dependency PRs
+         * @param {RequestDependencySuggestions} requestDependencySuggestions
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        suggestDependencyPRs: async (requestDependencySuggestions: RequestDependencySuggestions, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'requestDependencySuggestions' is not null or undefined
+            assertParamExists('suggestDependencyPRs', 'requestDependencySuggestions', requestDependencySuggestions)
+            const localVarPath = `/api/github/dependency-suggestions`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(requestDependencySuggestions, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1035,6 +1095,19 @@ export const DefaultApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         *
+         * @summary Suggest dependency PRs
+         * @param {RequestDependencySuggestions} requestDependencySuggestions
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async suggestDependencyPRs(requestDependencySuggestions: RequestDependencySuggestions, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResponseDependencySuggestions>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.suggestDependencyPRs(requestDependencySuggestions, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DefaultApi.suggestDependencyPRs']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @summary Get runners
          * @param {*} [options] Override http request option.
@@ -1275,6 +1348,16 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.getGithubPRs(nf, options).then((request) => request(axios, basePath));
         },
         /**
+         *
+         * @summary Suggest dependency PRs
+         * @param {RequestDependencySuggestions} requestDependencySuggestions
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        suggestDependencyPRs(requestDependencySuggestions: RequestDependencySuggestions, options?: RawAxiosRequestConfig): AxiosPromise<ResponseDependencySuggestions> {
+            return localVarFp.suggestDependencyPRs(requestDependencySuggestions, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @summary Get runners
          * @param {*} [options] Override http request option.
@@ -1485,6 +1568,17 @@ export class DefaultApi extends BaseAPI {
     }
 
     /**
+     *
+     * @summary Suggest dependency PRs
+     * @param {RequestDependencySuggestions} requestDependencySuggestions
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public suggestDependencyPRs(requestDependencySuggestions: RequestDependencySuggestions, options?: RawAxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).suggestDependencyPRs(requestDependencySuggestions, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 
      * @summary Get runners
      * @param {*} [options] Override http request option.
@@ -1614,6 +1708,7 @@ export class DefaultApi extends BaseAPI {
 }
 
 export const GetGithubPRsNfEnum = {
+    Free5gc: 'free5gc',
     Amf: 'amf',
     Ausf: 'ausf',
     Bsf: 'bsf',
@@ -1628,7 +1723,11 @@ export const GetGithubPRsNfEnum = {
     Udm: 'udm',
     Udr: 'udr',
     Upf: 'upf',
+    Openapi: 'openapi',
+    Util: 'util',
+    Nas: 'nas',
+    Ngap: 'ngap',
+    Pfcp: 'pfcp',
+    Aper: 'aper',
 } as const;
 export type GetGithubPRsNfEnum = typeof GetGithubPRsNfEnum[keyof typeof GetGithubPRsNfEnum];
-
-

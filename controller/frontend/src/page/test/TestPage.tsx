@@ -3,6 +3,7 @@ import {
   Configuration,
   DefaultApi,
   type GetGithubPRsNfEnum,
+  type LibraryPrSuggestion,
   type RequestSubmitTask,
   type ResponseGetTasks,
   type TaskSimple,
@@ -39,6 +40,15 @@ const NF_ORDER: NfDef[] = [
   { label: 'UPF', apiName: 'upf' },
 ]
 
+const LIBRARY_ORDER: NfDef[] = [
+  { label: 'OpenAPI', apiName: 'openapi' },
+  { label: 'Util', apiName: 'util' },
+  { label: 'NAS', apiName: 'nas' },
+  { label: 'NGAP', apiName: 'ngap' },
+  { label: 'PFCP', apiName: 'pfcp' },
+  { label: 'APER', apiName: 'aper' },
+]
+
 const apiBasePath = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8888`
 
 export default function TestPage() {
@@ -58,6 +68,9 @@ export default function TestPage() {
   const [enabledNf, setEnabledNf] = useState<Record<string, boolean>>({})
   const [selectedPrByNf, setSelectedPrByNf] = useState<Record<string, string>>({})
   const [selectedTestcases, setSelectedTestcases] = useState<string[]>([])
+  const [dependencySuggestions, setDependencySuggestions] = useState<LibraryPrSuggestion[]>([])
+  const [selectedLibraryPr, setSelectedLibraryPr] = useState<Record<string, boolean>>({})
+  const [isLoadingDependencySuggestions, setIsLoadingDependencySuggestions] = useState(false)
   const [pendingTasks, setPendingTasks] = useState<TaskSimple[]>([])
   const [ongoingTasks, setOngoingTasks] = useState<TaskSimple[]>([])
   const [historyTasks, setHistoryTasks] = useState<TaskSimple[]>([])
@@ -87,6 +100,8 @@ export default function TestPage() {
     setEnabledNf({})
     setSelectedPrByNf({})
     setSelectedTestcases([])
+    setDependencySuggestions([])
+    setSelectedLibraryPr({})
   }
 
   async function refreshTaskQueues(options?: { showLoading?: boolean; notifyError?: boolean }) {
@@ -193,8 +208,9 @@ export default function TestPage() {
   }
 
   async function handleSubmitTask() {
-    const payload = prepareSubmitPayload()
+    const payload = confirmPayload
     if (!payload) {
+      addError('Missing task payload')
       return
     }
 
@@ -212,6 +228,8 @@ export default function TestPage() {
       addSuccess(response.data.message || 'Task submitted successfully')
       setIsFormOpen(false)
       setConfirmPayload(null)
+      setDependencySuggestions([])
+      setSelectedLibraryPr({})
       resetFormState()
       await refreshTaskQueues()
     } catch (error: unknown) {
@@ -242,10 +260,24 @@ export default function TestPage() {
       return null
     }
 
+    const enabledLibraryNames = LIBRARY_ORDER
+      .map((library) => library.apiName)
+      .filter((apiName) => Boolean(enabledNf[apiName]))
+
+    const missingPrLibrary = enabledLibraryNames.filter((apiName) => !selectedPrByNf[apiName])
+    if (missingPrLibrary.length > 0) {
+      addError(`Please select PR for: ${missingPrLibrary.join(', ')}`)
+      return null
+    }
+
     const payload: RequestSubmitTask = {
       tests: selectedTestcases,
       nfPrList: enabledNfNames.map((apiName) => ({
         nfName: apiName,
+        pr: Number(selectedPrByNf[apiName]),
+      })),
+      libraryPrList: enabledLibraryNames.map((apiName) => ({
+        repoName: apiName,
         pr: Number(selectedPrByNf[apiName]),
       })),
     }
@@ -253,18 +285,93 @@ export default function TestPage() {
     return payload
   }
 
-  function openSubmitModal() {
+  function libraryPrKey(item: Pick<LibraryPrSuggestion, 'repoName' | 'pr'>) {
+    return `${item.repoName}-${item.pr}`
+  }
+
+  function buildLibraryPrList(suggestions: LibraryPrSuggestion[], selected: Record<string, boolean>) {
+    return suggestions
+      .filter((suggestion) => selected[libraryPrKey(suggestion)])
+      .map((suggestion) => ({
+        repoName: suggestion.repoName,
+        pr: suggestion.pr,
+      }))
+  }
+
+  function mergeLibraryPrLists(left: NonNullable<RequestSubmitTask['libraryPrList']>, right: NonNullable<RequestSubmitTask['libraryPrList']>) {
+    const seen = new Set<string>()
+    return [...left, ...right].filter((item) => {
+      const key = `${item.repoName}-${item.pr}`
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }
+
+  async function openSubmitModal() {
     const payload = prepareSubmitPayload()
     if (!payload) {
       return
     }
 
-    setConfirmPayload(payload)
-    setIsSubmitModalOpen(true)
+    setIsLoadingDependencySuggestions(true)
+    try {
+      const response = await api.suggestDependencyPRs(
+        { nfPrList: payload.nfPrList },
+        {
+          headers: getUserHeader(),
+        },
+      )
+      const suggestions = response.data.suggestions || []
+      const selected = suggestions.reduce<Record<string, boolean>>((acc, suggestion) => {
+        acc[libraryPrKey(suggestion)] = true
+        return acc
+      }, {})
+
+      setDependencySuggestions(suggestions)
+      setSelectedLibraryPr(selected)
+      setConfirmPayload({
+        ...payload,
+        libraryPrList: mergeLibraryPrLists(payload.libraryPrList || [], buildLibraryPrList(suggestions, selected)),
+      })
+    } catch (error: unknown) {
+      addError(extractErrorMessage(error, 'Failed to load dependency suggestions'))
+      setDependencySuggestions([])
+      setSelectedLibraryPr({})
+      setConfirmPayload(payload)
+    } finally {
+      setIsLoadingDependencySuggestions(false)
+      setIsSubmitModalOpen(true)
+    }
   }
 
   function closeSubmitModal() {
     setIsSubmitModalOpen(false)
+  }
+
+  function toggleLibrarySuggestion(suggestion: LibraryPrSuggestion, checked: boolean) {
+    const key = libraryPrKey(suggestion)
+    const nextSelected = {
+      ...selectedLibraryPr,
+      [key]: checked,
+    }
+
+    setSelectedLibraryPr(nextSelected)
+    setConfirmPayload((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        libraryPrList: mergeLibraryPrLists(
+          (prev.libraryPrList || []).filter((item) => !dependencySuggestions.some((suggestion) => libraryPrKey(suggestion) === `${item.repoName}-${item.pr}`)),
+          buildLibraryPrList(dependencySuggestions, nextSelected),
+        ),
+      }
+    })
   }
 
   function openClearHistoryModal() {
@@ -384,6 +491,19 @@ export default function TestPage() {
               />
             ))}
 
+            {LIBRARY_ORDER.map((library) => (
+              <NfPrSelector
+                key={library.apiName}
+                label={library.label}
+                checked={Boolean(enabledNf[library.apiName])}
+                options={prsByNf[library.apiName] || []}
+                selectedPr={selectedPrByNf[library.apiName] || ''}
+                disabled={Boolean(loadingByNf[library.apiName])}
+                onToggle={(checked) => updateNfToggle(library.apiName, checked)}
+                onSelectPr={(value) => updateSelectedPr(library.apiName, value)}
+              />
+            ))}
+
             <section className={styles.testcasePicker}>
               <div className={styles.testcaseHeader}>
                 <h3>Testcases</h3>
@@ -426,9 +546,9 @@ export default function TestPage() {
                 type="button"
                 className={styles.submitButton}
                 onClick={openSubmitModal}
-                disabled={isSubmittingTask}
+                disabled={isSubmittingTask || isLoadingDependencySuggestions}
               >
-                {isSubmittingTask ? 'Submitting...' : 'Submit Task'}
+                {isLoadingDependencySuggestions ? 'Checking dependencies...' : isSubmittingTask ? 'Submitting...' : 'Submit Task'}
               </button>
             </div>
           </div>
@@ -527,6 +647,46 @@ export default function TestPage() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className={styles.confirmSection}>
+            <p className={styles.confirmLabel}>Library PR Suggestions</p>
+            {dependencySuggestions.length > 0 ? (
+              <ul className={styles.confirmList}>
+                {dependencySuggestions.map((suggestion) => (
+                  <li key={libraryPrKey(suggestion)}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedLibraryPr[libraryPrKey(suggestion)])}
+                        onChange={(event) => toggleLibrarySuggestion(suggestion, event.target.checked)}
+                      />
+                      <span>
+                        {suggestion.repoName} / PR #{suggestion.pr}
+                        {suggestion.title ? ` - ${suggestion.title}` : ''}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.queueHint}>No dependency suggestions</p>
+            )}
+          </section>
+
+          <section className={styles.confirmSection}>
+            <p className={styles.confirmLabel}>Selected Library / PR</p>
+            {confirmPayload?.libraryPrList && confirmPayload.libraryPrList.length > 0 ? (
+              <ul className={styles.confirmList}>
+                {confirmPayload.libraryPrList.map((item) => (
+                  <li key={`${item.repoName}-${item.pr}`}>
+                    {item.repoName} / PR #{item.pr}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.queueHint}>No library PR selected</p>
+            )}
           </section>
         </div>
       </Modal>

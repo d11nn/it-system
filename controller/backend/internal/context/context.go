@@ -46,6 +46,10 @@ func (ctx *ItContext) GetPrList(nf string) ([]pr, error) {
 	return ctx.githubContext.getPrList(nf)
 }
 
+func (ctx *ItContext) GetPrDetail(repo string, prNumber int) (*pr, error) {
+	return ctx.githubContext.getPrDetail(repo, prNumber)
+}
+
 func (ctx *ItContext) SaveToDb(bucket, key, value string) error {
 	return ctx.bboltDbContext.Save([]byte(bucket), []byte(key), []byte(value))
 }
@@ -105,8 +109,8 @@ func (ctx *ItContext) GetTask(id uint64) (*task, error) {
 	return ctx.taskContext.getTaskById(id)
 }
 
-func (ctx *ItContext) CreateTask(username string, createTime int64, tests []string, nfPrList []model.NfPr) error {
-	return ctx.taskContext.createTask(username, createTime, convertTestsToPipelines(tests), convertNfPrListToNfPr(nfPrList))
+func (ctx *ItContext) CreateTask(username string, createTime int64, tests []string, nfPrList []model.NfPr, libraryPrList []model.LibraryPr) error {
+	return ctx.taskContext.createTask(username, createTime, convertTestsToPipelines(tests), convertNfPrListToNfPr(nfPrList), convertLibraryPrListToLibraryPr(libraryPrList))
 }
 
 func (ctx *ItContext) GetFirstPendingTaskAndMoveToOngoing() (*task, error) {
@@ -223,4 +227,16 @@ func convertNfPrListToNfPr(nfPrList []model.NfPr) []nfPr {
 	}
 
 	return nfPrs
+}
+
+func convertLibraryPrListToLibraryPr(libraryPrList []model.LibraryPr) []libraryPr {
+	libraryPrs := make([]libraryPr, len(libraryPrList))
+	for i, lp := range libraryPrList {
+		libraryPrs[i] = libraryPr{
+			repoName: lp.RepoName,
+			pr:       lp.PR,
+		}
+	}
+
+	return libraryPrs
 }

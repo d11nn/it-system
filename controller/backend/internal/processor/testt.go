@@ -154,13 +154,19 @@ func (p *Processor) GetTask(id uint64) (*model.ResponseGetTask, *model.ErrorDeta
 			PR:     nfPr.PR(),
 		})
 	}
+	for _, libraryPr := range task.LibraryPrList() {
+		response.LibraryPrList = append(response.LibraryPrList, model.LibraryPr{
+			RepoName: libraryPr.RepoName(),
+			PR:       libraryPr.PR(),
+		})
+	}
 
 	return response, nil
 }
 
 func (p *Processor) SubmitTask(req *model.RequestSubmitTask, username string) (*model.ResponseSubmitTask, *model.ErrorDetail) {
 	nowTime := time.Now().Unix()
-	if err := p.itContext.CreateTask(username, nowTime, req.Tests, req.NFPrList); err != nil {
+	if err := p.itContext.CreateTask(username, nowTime, req.Tests, req.NFPrList, req.LibraryPrList); err != nil {
 		return nil, &model.ErrorDetail{
 			HttpStatus: http.StatusInternalServerError,
 			Detail:     fmt.Sprintf("Failed to create task: %v", err),

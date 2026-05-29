@@ -40,13 +40,14 @@ type TaskSimple struct {
 }
 
 type ResponseGetTask struct {
-	Message    string       `json:"message" binding:"required"`
-	Id         uint64       `json:"id,omitempty"`
-	Username   string       `json:"username,omitempty"`
-	Status     string       `json:"status,omitempty"`
-	CreateTime int64        `json:"createTime,omitempty"`
-	Tests      []TestDetail `json:"tests,omitempty"`
-	NFPrList   []NfPr       `json:"nfPrList,omitempty"`
+	Message       string       `json:"message" binding:"required"`
+	Id            uint64       `json:"id,omitempty"`
+	Username      string       `json:"username,omitempty"`
+	Status        string       `json:"status,omitempty"`
+	CreateTime    int64        `json:"createTime,omitempty"`
+	Tests         []TestDetail `json:"tests,omitempty"`
+	NFPrList      []NfPr       `json:"nfPrList,omitempty"`
+	LibraryPrList []LibraryPr  `json:"libraryPrList,omitempty"`
 }
 
 type TestDetail struct {
@@ -55,13 +56,19 @@ type TestDetail struct {
 }
 
 type RequestSubmitTask struct {
-	Tests    []string `json:"tests" binding:"required"`
-	NFPrList []NfPr   `json:"nfPrList" binding:"required"`
+	Tests         []string    `json:"tests" binding:"required"`
+	NFPrList      []NfPr      `json:"nfPrList" binding:"required"`
+	LibraryPrList []LibraryPr `json:"libraryPrList,omitempty"`
 }
 
 type NfPr struct {
 	NfName string `json:"nfName" binding:"required"`
 	PR     int    `json:"pr" binding:"required"`
+}
+
+type LibraryPr struct {
+	RepoName string `json:"repoName" binding:"required"`
+	PR       int    `json:"pr" binding:"required"`
 }
 
 type ResponseSubmitTask struct {

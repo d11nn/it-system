@@ -32,10 +32,11 @@ type RequestRunnerHeartbeat struct {
 }
 
 type ResponseRunnerHeartbeat struct {
-	Message  string   `json:"message" binding:"required"`
-	Id       uint64   `json:"id,omitempty"`
-	Tests    []string `json:"tests,omitempty"`
-	NFPrList []NfPr   `json:"nfPrList,omitempty"`
+	Message       string      `json:"message" binding:"required"`
+	Id            uint64      `json:"id,omitempty"`
+	Tests         []string    `json:"tests,omitempty"`
+	NFPrList      []NfPr      `json:"nfPrList,omitempty"`
+	LibraryPrList []LibraryPr `json:"libraryPrList,omitempty"`
 }
 
 type RequestTestOutput struct {

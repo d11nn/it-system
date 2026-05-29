@@ -422,6 +422,21 @@ export default function TaskDetailPage() {
             </section>
 
             <section className={styles.section}>
+              <h3>Library PR List</h3>
+              {task?.libraryPrList && task.libraryPrList.length > 0 ? (
+                <ul className={styles.tagList}>
+                  {task.libraryPrList.map((item) => (
+                    <li key={`${item.repoName}-${item.pr}`} className={styles.tag}>
+                      {item.repoName} / PR #{item.pr}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.empty}>No library PR data</p>
+              )}
+            </section>
+
+            <section className={styles.section}>
               <h3>Tests</h3>
               {tests.length > 0 ? (
                 <div className={styles.tableWrap}>

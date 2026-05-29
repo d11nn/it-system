@@ -495,6 +495,7 @@ paths:
           schema:
             type: string
             enum:
+              - free5gc
               - amf
               - ausf
               - bsf
@@ -509,6 +510,12 @@ paths:
               - udm
               - udr
               - upf
+              - openapi
+              - util
+              - nas
+              - ngap
+              - pfcp
+              - aper
             example: amf
       security:
         - bearerAuth: []
@@ -519,6 +526,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetGithubPRsResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/github/dependency-suggestions:
+    post:
+      summary: Suggest dependency PRs
+      operationId: suggestDependencyPRs
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDependencySuggestions'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDependencySuggestions'
         '400':
           description: Bad Request
           content:
@@ -852,6 +896,39 @@ components:
         pr:
           type: integer
           example: 100
+    LibraryPr:
+      type: object
+      required:
+        - repoName
+        - pr
+      properties:
+        repoName:
+          type: string
+          enum:
+            - openapi
+            - util
+            - nas
+            - ngap
+            - pfcp
+            - aper
+          example: openapi
+        pr:
+          type: integer
+          example: 67
+    LibraryPrSuggestion:
+      allOf:
+        - $ref: '#/components/schemas/LibraryPr'
+        - type: object
+          properties:
+            title:
+              type: string
+              example: Update NGAP type definitions
+            reason:
+              type: string
+              example: AMF PR #204 mentions openapi and a related library PR is open
+            confidence:
+              type: string
+              example: medium
     ResponseGetTasks:
       type: object
       required:
@@ -909,6 +986,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NfPr'
+        libraryPrList:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryPr'
     TestDetail:
       type: object
       required:
@@ -949,6 +1030,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NfPr'
+        libraryPrList:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryPr'
     AddTestcasesRequest:
       type: object
       required:
@@ -1044,6 +1129,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PR'
+    RequestDependencySuggestions:
+      type: object
+      required:
+        - nfPrList
+      properties:
+        nfPrList:
+          type: array
+          items:
+            $ref: '#/components/schemas/NfPr'
+    ResponseDependencySuggestions:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Dependency suggestions generated
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryPrSuggestion'
     Runner:
       type: object
       required:
@@ -1135,6 +1241,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NfPr'
+        libraryPrList:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryPr'
     RequestTestOutput:
       type: object
       required:
